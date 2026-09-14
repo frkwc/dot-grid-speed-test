@@ -830,9 +830,6 @@
     let currentSaveUrl = '';
     let currentSaveDataUrl = '';
 
-    // iOS / iPadOS の WKWebView 系では blob: URL + download が
-    // 環境によって反応しないことがあるため、保存用リンクには
-    // data: URL を使うフォールバックを用意する。
     function isAppleMobileLike() {
       const ua = navigator.userAgent || '';
       const platform = navigator.platform || '';
@@ -875,9 +872,6 @@
             lastModified: Date.now()
           });
 
-          // canShare は「共有できるか」の補助判定にのみ使用する。
-          // iPadOS / Koder では false でも navigator.share(files) が実際には
-          // 動作する環境があるため、ここで保存UIを隠さない。
           if (shareSupported && typeof navigator.canShare === 'function') {
             try {
               canShareFiles = navigator.canShare({ files: [fileObj] }) === true;
@@ -899,10 +893,6 @@
         userActivation: navigator.userActivation ? navigator.userActivation.isActive : 'unknown'
       });
 
-      // ★ ここでは navigator.share() を呼ばない。
-      // バイナリ生成処理の途中から呼び出すと iPadOS が「ユーザー操作直後」
-      // と認識しない場合があるため、保存モーダル内のボタンをユーザーが
-      // タップした瞬間に navigator.share() を実行する。
       openSaveModal(
         blob,
         fileName,
@@ -927,15 +917,11 @@
       const directBtn = $('bModalDirectDownload');
       const newTabBtn = $('bModalNewTab');
 
-      // 直接ダウンロードのフォールバック
       directBtn.href = url;
       directBtn.download = fileName;
       directBtn.target = '_self';
       directBtn.rel = 'noopener';
 
-      // ★ iPadOSネイティブ共有シート
-      // canShare() の結果ではなく、navigator.share() の存在だけでボタンを表示。
-      // 実際の navigator.share() はこの「ボタンのタップイベント」から直接呼ぶ。
       if (shareSupported && fileObj) {
         shareBtn.style.display = 'flex';
         shareBtn.textContent = '📤 iPadの共有シートを開く（「ファイル」に保存）';
@@ -956,7 +942,6 @@
               fileType: fileObj.type
             });
 
-            // ★ awaitを挟まず、タップイベント直下でnavigator.share()を起動
             const sharePromise = navigator.share(shareData);
 
             if (sharePromise && typeof sharePromise.then === 'function') {
@@ -985,7 +970,6 @@
         shareBtn.style.display = 'none';
       }
 
-      // 新規タブ
       newTabBtn.onclick = () => {
         const opened = window.open(url, '_blank');
         if (!opened) {
@@ -1035,12 +1019,10 @@
         const k = (s + '    ').slice(0, 4);
         this.ascii(k);
       }
-      // Photoshop ActionDescriptor ID: 0 = 4-byte key, non-zero = Unicode ID.
       id(s) {
         this.u32(0);
         this.key(s);
       }
-      // Plain Unicode string used where the GRD descriptor stores a text value.
       unicode(s) {
         s = String(s ?? '');
         this.u32(s.length);
@@ -1049,8 +1031,6 @@
         for (let i = 0; i < s.length; i++) v.setUint16(i * 2, s.charCodeAt(i), false);
         this.chunks.push(b);
       }
-      // ActionDescriptor object names are Pascal-style Unicode strings whose
-      // length includes the terminating NUL. This is important for CSP.
       unicodeZ(s) {
         s = String(s ?? '');
         this.u32(s.length + 1);
@@ -1060,16 +1040,12 @@
         v.setUint16(s.length * 2, 0, false);
         this.chunks.push(b);
       }
-      // Serialize a Photoshop ActionDescriptor object value.
-      // Format: type=Objc, Unicode object name (NUL included), class ID, item count.
       object(classKey, itemCount, objectName = '') {
         this.key('Objc');
         this.unicodeZ(objectName);
         this.id(classKey);
         this.u32(itemCount);
       }
-      // Photoshop stores each double item in these descriptors followed by
-      // four zero bytes. This padding is present in CSP-readable GRD files.
       descriptorDouble(keyName, value) {
         this.id(keyName);
         this.key('doub');
@@ -1091,17 +1067,14 @@
       const w = new PhotoshopActionWriter();
       const list = Array.isArray(gradList) ? gradList : [];
 
-      // 1. Magic Header & Version (8BGR, Version 5)
       w.ascii('8BGR');
       w.u16(5);
 
-      // 2. Root Descriptor (matches CSP-readable GRD descriptor header)
-      w.u32(16);           // ActionDescriptor version
-      w.unicodeZ('');       // Empty descriptor name, represented by one terminating NUL
-      w.id('null');        // ClassID = 'null'
-      w.u32(1);             // Number of items = 1
+      w.u32(16);
+      w.unicodeZ('');
+      w.id('null');
+      w.u32(1);
 
-      // 3. GrdL (Gradient List)
       w.id('GrdL');
       w.key('VlLs');
       w.u32(list.length);
@@ -1109,29 +1082,23 @@
       list.forEach(grad => {
         const nodes = Array.isArray(grad.nodes) ? [...grad.nodes].sort((a, b) => Number(a.pos) - Number(b.pos)) : [];
 
-        // Each GRD list entry has a CSP/Photoshop wrapper object named Gradient
-        // containing one `Grad` object. The inner object contains the 5 gradient fields.
         w.object('Grdn', 1, 'Gradient');
         w.id('Grad');
         w.object('Grdn', 5, 'Gradient');
 
-        // Item 1: Nm (name). TEXT strings also include the terminating NUL.
         w.id('Nm  ');
         w.key('TEXT');
         w.unicodeZ(grad.name || 'Gradient');
 
-        // Item 2: GrdF (Gradient Form = Custom Stops)
         w.id('GrdF');
         w.key('enum');
         w.id('GrdF');
         w.id('CstS');
 
-        // Item 3: Intr (Interpolation / smoothness)
         w.id('Intr');
         w.key('doub');
         w.f64(4096.0);
 
-        // Item 4: Clrs (Color Stops)
         w.id('Clrs');
         w.key('VlLs');
         w.u32(nodes.length);
@@ -1139,34 +1106,28 @@
         nodes.forEach(node => {
           const rgb = hexToRgb(node.color || '#000000');
 
-          // Color-stop object: empty object name represented as one NUL.
           w.object('Clrt', 4, '');
 
-          // Clr (RGB Color Descriptor)
           w.id('Clr ');
           w.object('RGBC', 3, '');
           w.descriptorDouble('Rd  ', rgb.r);
           w.descriptorDouble('Grn ', rgb.g);
           w.descriptorDouble('Bl  ', rgb.b);
 
-          // Type (User Stop)
           w.id('Type');
           w.key('enum');
           w.id('Clry');
           w.id('UsrS');
 
-          // Lctn (0 to 4096)
           w.id('Lctn');
           w.key('long');
           w.i32(Math.max(0, Math.min(4096, Math.round(Number(node.pos || 0) * 4096))));
 
-          // Mdpn (50%)
           w.id('Mdpn');
           w.key('long');
           w.i32(50);
         });
 
-        // Item 5: Trns (Full opacity at 0% and 100%)
         w.id('Trns');
         w.key('VlLs');
         w.u32(2);
@@ -1191,7 +1152,6 @@
 
       const buffer = w.toBuffer();
 
-      // ■ GRD 生成後ヘッダー自己検証 (8BGR / 5)
       const u8 = new Uint8Array(buffer, 0, 6);
       const magic = String.fromCharCode(u8[0], u8[1], u8[2], u8[3]);
       const version = (u8[4] << 8) | u8[5];
@@ -1258,7 +1218,6 @@
           'color-burn': 'color burn'
         };
 
-        // トーンの色サンプリング用に画像レイヤーを事前合成
         const samplingBuffer = document.createElement('canvas');
         samplingBuffer.width = baseW;
         samplingBuffer.height = baseH;
@@ -3417,6 +3376,15 @@
 
       if (l.type === 'tone') {
         const sampleCtx = sampleCanvas ? sampleCanvas.getContext('2d') : null;
+        let sampleData = null;
+        if (sampleCtx && w > 0 && h > 0) {
+          try {
+            sampleData = sampleCtx.getImageData(0, 0, w, h).data;
+          } catch (e) {
+            sampleData = null;
+          }
+        }
+
         const drawDots = (ox=0, oy=0, col=null) => {
           ctx.save();
           const cx = l.x + ox + l.w/2, cy = l.y + oy + l.h/2, rad = (l.angle * Math.PI)/180;
@@ -3453,12 +3421,16 @@
               const oy2 = Math.floor(cy + (finalGx * Math.sin(rad) + finalGy * Math.cos(rad)));
               let curR = baseR, curC = col || l.color;
 
-              if (sampleCtx && ox2 >= 0 && ox2 < w && oy2 >= 0 && oy2 < h) {
-                const imgD = sampleCtx.getImageData(ox2, oy2, 1, 1).data;
-                if (imgD[3] > 10) {
-                  if (!col && (l.mode === 'color-halftone' || l.mode === 'mosaic')) curC = `rgb(${imgD[0]},${imgD[1]},${imgD[2]})`;
+              if (sampleData && ox2 >= 0 && ox2 < w && oy2 >= 0 && oy2 < h) {
+                const idx = (oy2 * w + ox2) * 4;
+                const a = sampleData[idx + 3];
+                if (a > 10) {
+                  const r = sampleData[idx];
+                  const g = sampleData[idx + 1];
+                  const b = sampleData[idx + 2];
+                  if (!col && (l.mode === 'color-halftone' || l.mode === 'mosaic')) curC = `rgb(${r},${g},${b})`;
                   if (l.mode === 'color-halftone' || l.mode === 'halftone') {
-                    curR = Math.max(0.3, (1 - (0.299*imgD[0] + 0.587*imgD[1] + 0.114*imgD[2])/255) * baseR * 1.55);
+                    curR = Math.max(0.3, (1 - (0.299*r + 0.587*g + 0.114*b)/255) * baseR * 1.55);
                   }
                 }
               }
@@ -3494,7 +3466,25 @@
     }
 
     // --- メインレンダリングエンジン ---
+    let renderRafId = null;
+
     function render(isExport = false) {
+      if (isExport) {
+        if (renderRafId !== null) {
+          cancelAnimationFrame(renderRafId);
+          renderRafId = null;
+        }
+        executeRender(true);
+        return;
+      }
+      if (renderRafId !== null) return;
+      renderRafId = requestAnimationFrame(() => {
+        renderRafId = null;
+        executeRender(false);
+      });
+    }
+
+    function executeRender(isExport = false) {
       const canvas = isExport ? $('expC') : $('mainCanvas');
 
       const outW = isExport ? baseW : baseW + STAGE_PAD * 2;
