@@ -1,0 +1,3691 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Dot Grid Studio Pro - iPad & Koder Solid Edition</title>
+<!-- ag-psd ライブラリ -->
+<script src="https://cdn.jsdelivr.net/npm/ag-psd/dist/bundle.js" onerror="window.__agPsdLoadFailed = true;"></script>
+<script>
+  window.addEventListener('error', function (e) {
+    console.error('[GLOBAL ERROR]', e.error || e.message);
+  });
+  window.addEventListener('unhandledrejection', function (e) {
+    console.error('[UNHANDLED REJECTION]', e.reason);
+  });
+</script>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+  body { display: flex; height: 100vh; background: #1a1a1a; color: #FFFFE3; overflow: hidden; user-select: none; touch-action: none; }
+
+  /* 左側：編集ステージ */
+  .preview-area {
+    flex: 1; position: relative; overflow: hidden; background: #161616 radial-gradient(#262626 1.5px, transparent 1.5px);
+    background-size: 20px 20px; cursor: default;
+  }
+  .canvas-stage {
+    position: absolute; left: 0; top: 0; line-height: 0; pointer-events: none;
+  }
+  #mainCanvas {
+    display: block; pointer-events: auto;
+  }
+
+  /* ナビゲーターツール (フローティング) */
+  .navigator-window {
+    position: absolute; top: 14px; left: 14px; width: 220px;
+    background: #2B2B2B; border: 1px solid #444444; border-radius: 6px;
+    box-shadow: 0 8px 25px rgba(0,0,0,0.5); z-index: 100; display: flex; flex-direction: column;
+    overflow: hidden; pointer-events: auto;
+  }
+  .nav-header {
+    background: #363636; padding: 6px 8px; border-bottom: 1px solid #444;
+    display: flex; justify-content: space-between; align-items: center; cursor: move;
+  }
+  .nav-title { font-size: 11px; font-weight: 700; color: #CBCBCB; display: flex; align-items: center; gap: 4px; }
+  .nav-controls-header { display: flex; gap: 4px; }
+  .nav-btn-h { background: none; border: none; color: #CBCBCB; font-size: 11px; cursor: pointer; padding: 0 3px; }
+  .nav-btn-h:hover { color: #FFFFE3; }
+  
+  .nav-body { display: flex; flex-direction: column; padding: 8px; gap: 6px; }
+  .nav-preview-box {
+    width: 100%; height: 105px; background: #141414; border: 1px solid #404040; border-radius: 4px;
+    position: relative; overflow: hidden; display: flex; align-items: center; justify-content: center;
+  }
+  #navCanvas { display: block; }
+  .nav-viewport-rect {
+    position: absolute; border: 1.5px solid #ff3344; background: rgba(255, 51, 68, 0.12);
+    cursor: grab; pointer-events: auto;
+  }
+  .nav-viewport-rect:active { cursor: grabbing; }
+
+  .nav-slider-row { display: flex; align-items: center; gap: 6px; }
+  .nav-zoom-input {
+    width: 46px; padding: 2px 4px; font-size: 11px; border-radius: 3px;
+    border: 1px solid #555; background: #222; color: #FFFFE3; text-align: right;
+  }
+  .nav-slider { flex: 1; -webkit-appearance: none; height: 5px; border-radius: 2px; background: #555; outline: none; }
+  .nav-slider::-webkit-slider-thumb { -webkit-appearance: none; width: 14px; height: 14px; border-radius: 50%; background: #6D8196; border: 1.5px solid #FFFFE3; cursor: pointer; }
+
+  .nav-btn-row { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; }
+  .nav-btn {
+    background: #383838; border: 1px solid #4E4E4E; color: #FFFFE3;
+    padding: 5px 0; border-radius: 3px; font-size: 11px; font-weight: 600; cursor: pointer; text-align: center;
+  }
+  .nav-btn:hover { background: #4D4D4D; }
+  .nav-btn.active { background: #6D8196; border-color: #FFFFE3; color: #FFFFE3; }
+
+  /* 右側：サイドバー */
+  .sidebar {
+    width: 360px; min-width: 360px; background: #2E2E2E; border-left: 1px solid #404040;
+    padding: 12px; display: flex; flex-direction: column; gap: 9px; overflow-y: auto; z-index: 10;
+    touch-action: pan-y;
+  }
+  .header-row { display: flex; justify-content: space-between; align-items: center; padding-bottom: 4px; border-bottom: 1px solid #444; }
+  .title { font-size: 15px; font-weight: 700; display: flex; align-items: center; gap: 6px; }
+  .badge-pro { background: #6D8196; font-size: 10px; padding: 2px 6px; border-radius: 4px; color: #FFFFE3; }
+  .header-btn-group { display: flex; gap: 4px; }
+  .btn-hist { background: #3E3E3E; border: 1px solid #555555; color: #FFFFE3; padding: 4px 8px; border-radius: 5px; font-size: 12px; cursor: pointer; }
+  .btn-hist:disabled { opacity: 0.3; cursor: not-allowed; }
+
+  /* レイヤーパネル */
+  .layer-panel {
+    background: #363636; border: 1px solid #464646; border-radius: 7px; overflow: hidden;
+    display: flex; flex-direction: column;
+  }
+  .layer-panel-header {
+    background: #282828; padding: 6px 9px; border-bottom: 1px solid #404040;
+    display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 4px;
+  }
+  .layer-panel-title { font-size: 11px; font-weight: 700; color: #CBCBCB; text-transform: uppercase; }
+  .layer-actions { display: flex; gap: 4px; flex-wrap: wrap; }
+  .btn-layer-add {
+    background: #404040; border: 1px solid #555; color: #FFFFE3; font-size: 10px; font-weight: 700;
+    padding: 3px 6px; border-radius: 4px; cursor: pointer; transition: background 0.15s;
+  }
+  .btn-layer-add:hover { background: #6D8196; }
+
+  .layer-stack {
+    display: flex; flex-direction: column; max-height: 160px; overflow-y: auto; background: #202020;
+  }
+  .layer-row {
+    display: flex; align-items: center; padding: 4px 8px; gap: 6px;
+    border-bottom: 1px solid #2C2C2C; cursor: pointer; font-size: 11px; transition: background 0.1s;
+  }
+  .layer-row:hover { background: #303030; }
+  .layer-row.active { background: #5A6D82; color: #FFFFE3; font-weight: 700; }
+  .layer-clip-indicator { width: 3px; height: 18px; background: transparent; border-radius: 2px; }
+  .layer-row.clipped .layer-clip-indicator { background: #ef4444; }
+  
+  .layer-thumb {
+    width: 26px; height: 26px; min-width: 26px; border-radius: 3px; background: #141414;
+    border: 1px solid #555; overflow: hidden; display: flex; align-items: center; justify-content: center;
+  }
+  .layer-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+
+  .layer-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-left: 2px; }
+  .layer-meta { font-size: 10px; opacity: 0.75; margin-right: 2px; }
+  .layer-row-btns { display: flex; gap: 2px; align-items: center; }
+  .layer-btn-icon {
+    font-size: 11px; cursor: pointer; padding: 2px; border-radius: 3px; opacity: 0.8;
+    background: transparent; border: none; color: inherit;
+  }
+  .layer-btn-icon:hover { opacity: 1; background: rgba(255,255,255,0.1); }
+  .layer-btn-icon.active { opacity: 1; color: #ef4444; }
+
+  /* プロパティ枠 */
+  .prop-section {
+    display: flex; flex-direction: column; gap: 7px; background: #363636;
+    padding: 9px 11px; border-radius: 7px; border: 1px solid #444444;
+  }
+  .sec-title { font-size: 11px; font-weight: 700; color: #CBCBCB; text-transform: uppercase; letter-spacing: 0.5px; }
+
+  .ctrl { display: flex; flex-direction: column; gap: 2px; }
+  .lbl { display: flex; justify-content: space-between; font-size: 11px; font-weight: 600; color: #CBCBCB; }
+  .val { color: #FFFFE3; background: #202020; padding: 1px 5px; border-radius: 3px; font-size: 10px; border: 1px solid #444; }
+  input[type="range"] { width: 100%; height: 5px; border-radius: 3px; background: #555; outline: none; -webkit-appearance: none; cursor: pointer; }
+  input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 15px; height: 15px; border-radius: 50%; background: #6D8196; border: 2px solid #FFFFE3; cursor: pointer; }
+  select, input[type="text"], input[type="number"] { width: 100%; padding: 4px 6px; border-radius: 4px; border: 1px solid #555; background: #202020; color: #FFFFE3; font-size: 11px; outline: none; }
+
+  input[type="color"] {
+    width: 100%; height: 28px; border-radius: 4px; border: 1px solid #555;
+    background: #202020; padding: 2px; cursor: pointer; -webkit-appearance: none;
+  }
+  input[type="color"]::-webkit-color-swatch-wrapper { padding: 0; }
+  input[type="color"]::-webkit-color-swatch { border: none; border-radius: 3px; }
+
+  .r2 { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; }
+  .ink-pal { display: flex; gap: 5px; flex-wrap: wrap; margin-top: 2px; }
+  .ink-chip { width: 22px; height: 22px; border-radius: 4px; border: 2px solid transparent; cursor: pointer; }
+  .ink-chip.active { border-color: #FFFFE3; box-shadow: 0 0 4px #FFFFE3; }
+
+  /* グラデーションエディタ */
+  .grad-editor-box { display: flex; flex-direction: column; gap: 4px; background: #222222; padding: 8px; border-radius: 6px; border: 1px solid #404040; }
+  .grad-bar-wrap { position: relative; height: 24px; margin: 8px 8px 16px 8px; cursor: crosshair; }
+  .grad-bar { width: 100%; height: 100%; border-radius: 3px; border: 1px solid #666; box-shadow: inset 0 0 5px rgba(0,0,0,0.5); }
+  .grad-pin {
+    position: absolute; top: 25px; transform: translateX(-50%); width: 14px; height: 14px;
+    cursor: grab; display: flex; flex-direction: column; align-items: center; user-select: none;
+  }
+  .grad-pin:active { cursor: grabbing; }
+  .grad-pin-arrow { width: 0; height: 0; border-left: 5px solid transparent; border-right: 5px solid transparent; border-bottom: 5px solid #FFFFE3; }
+  .grad-pin-color { width: 12px; height: 9px; border: 1px solid #000; border-radius: 1px; box-shadow: 0 1px 3px rgba(0,0,0,0.8); }
+  .grad-pin.active .grad-pin-arrow { border-bottom-color: #6D8196; }
+  .grad-pin.active .grad-pin-color { border-color: #FFFFE3; outline: 1.5px solid #6D8196; }
+
+  .grad-preset-list { display: flex; flex-direction: column; max-height: 150px; overflow-y: auto; background: #1a1a1a; border: 1px solid #404040; border-radius: 4px; }
+  .grad-preset-row { display: flex; align-items: center; justify-content: space-between; padding: 4px 6px; font-size: 10px; cursor: pointer; border-bottom: 1px solid #282828; gap: 4px; }
+  .grad-preset-row:hover { background: #323232; }
+  .grad-preset-row.active { background: #4D6075; font-weight: 700; color: #FFFFE3; }
+  .grad-preset-info { display: flex; align-items: center; gap: 6px; flex: 1; overflow: hidden; }
+  .grad-preset-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .grad-preset-preview { width: 50px; min-width: 50px; height: 12px; border-radius: 2px; border: 1px solid #555; }
+  .grad-preset-btns { display: flex; gap: 2px; align-items: center; }
+  .preset-icon-btn { background: transparent; border: none; color: #cbcbcb; font-size: 10px; padding: 3px 4px; cursor: pointer; border-radius: 2px; }
+  .preset-icon-btn:hover { color: #fff; background: rgba(255,255,255,0.2); }
+
+  .switch-grp { display: flex; background: #202020; border-radius: 5px; padding: 2px; border: 1px solid #444; gap: 2px; }
+  .sw-btn { flex: 1; padding: 6px 2px; border: none; border-radius: 4px; font-size: 11px; font-weight: 700; background: transparent; color: #CBCBCB; cursor: pointer; }
+  .sw-btn.active { background: #6D8196; color: #FFFFE3; }
+
+  .btn-act { background: #6D8196; color: #FFFFE3; border: 1px solid #8296AB; padding: 8px; border-radius: 5px; font-size: 11px; font-weight: 700; cursor: pointer; text-align: center; }
+  .btn-act-psd { background: #324456; color: #FFFFE3; border: 1px solid #4D6884; }
+  .btn-sub { background: #222222; color: #CBCBCB; border: 1px solid #4A4A4A; padding: 4px 6px; border-radius: 4px; font-size: 10px; cursor: pointer; }
+  .btn-sub:hover { color: #FFFFE3; background: #333333; }
+  .btn-del { background: transparent; color: #f87171; border: 1px solid #ef4444; padding: 2px 5px; border-radius: 4px; font-size: 10px; cursor: pointer; }
+
+  /* スポイトモーダル */
+  .eyedropper-modal {
+    display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.85); z-index: 2000;
+    align-items: center; justify-content: center; padding: 14px;
+  }
+  .eyedropper-box {
+    background: #2D2D2D; border: 1px solid #6D8196; border-radius: 8px; padding: 12px;
+    width: 520px; max-width: 96vw; max-height: 94vh; display: flex; flex-direction: column; gap: 8px;
+    box-shadow: 0 12px 35px rgba(0,0,0,0.7);
+  }
+  .eyedropper-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #444; padding-bottom: 5px; }
+  .eyedropper-preview-wrap {
+    flex: 1; max-height: 42vh; background: #181818; border: 1px solid #444; border-radius: 4px;
+    overflow: auto; display: flex; align-items: center; justify-content: center; position: relative;
+    cursor: crosshair; touch-action: none;
+  }
+  #eyedropperCanvas { display: block; max-width: 100%; height: auto; }
+  .eyedropper-loupe {
+    display: none; position: absolute; width: 54px; height: 54px; border-radius: 50%;
+    border: 2px solid #FFFFE3; box-shadow: 0 0 8px rgba(0,0,0,0.8); pointer-events: none;
+    overflow: hidden; z-index: 10; background: #000;
+  }
+  #loupeCanvas { width: 100%; height: 100%; }
+  .eyedropper-bottom-bar {
+    display: flex; align-items: center; justify-content: space-between; background: #202020;
+    padding: 6px 10px; border-radius: 5px; border: 1px solid #444;
+  }
+  .color-swatch-large { width: 32px; height: 32px; border-radius: 4px; border: 2px solid #FFFFE3; box-shadow: 0 0 5px rgba(0,0,0,0.5); }
+
+  /* 写真からグラデ自動生成モーダル */
+  .photo-grad-modal {
+    display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.88); z-index: 2100;
+    align-items: center; justify-content: center; padding: 10px;
+  }
+  .photo-grad-box {
+    background: #282828; border: 1px solid #6D8196; border-radius: 8px; padding: 12px 14px;
+    width: 860px; max-width: 96vw; max-height: 94vh; display: flex; flex-direction: column; gap: 8px;
+    box-shadow: 0 14px 40px rgba(0,0,0,0.8);
+  }
+  .photo-grad-header {
+    display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #444; padding-bottom: 6px;
+  }
+  .photo-grad-top {
+    display: grid; grid-template-columns: 1.25fr 1fr; gap: 12px; background: #1e1e1e;
+    padding: 10px; border-radius: 6px; border: 1px solid #3c3c3c;
+  }
+  .photo-grad-preview-box { display: flex; flex-direction: column; gap: 4px; }
+  .photo-grad-preview-canvas-wrap {
+    width: 100%; height: 220px; background: #111; border: 1.5px dashed #4f6575; border-radius: 5px;
+    display: flex; align-items: center; justify-content: center; overflow: hidden; position: relative;
+    cursor: pointer;
+  }
+  .photo-grad-preview-canvas-wrap.dragover { border-color: #6D8196; background: #182028; }
+  #testGradPreviewCanvas { max-width: 100%; max-height: 100%; display: block; object-fit: contain; }
+  .photo-grad-controls-box { display: flex; flex-direction: column; gap: 7px; justify-content: space-between; }
+  .photo-grad-cards { display: flex; flex-direction: column; gap: 8px; max-height: 38vh; overflow-y: auto; padding-right: 4px; }
+  .grad-card {
+    background: #202020; border: 1px solid #3e3e3e; border-radius: 6px; padding: 8px 10px;
+    display: flex; flex-direction: column; gap: 5px; transition: border-color 0.15s;
+  }
+  .grad-card:hover, .grad-card.preview-active { border-color: #6D8196; }
+  .grad-card.preview-active { box-shadow: 0 0 6px rgba(109, 129, 150, 0.5); }
+  .grad-card-header { display: flex; justify-content: space-between; align-items: center; }
+  .grad-card-title { font-size: 12px; font-weight: 700; color: #FFFFE3; display: flex; align-items: center; gap: 6px; }
+  .grad-card-meta { font-size: 10px; color: #aaa; }
+  .grad-card-bar { height: 24px; border-radius: 4px; border: 1px solid #555; box-shadow: inset 0 0 5px rgba(0,0,0,0.5); }
+  .grad-chips-wrap { display: flex; gap: 2px; flex-wrap: wrap; align-items: center; }
+  .grad-chip-dot { width: 13px; height: 13px; border-radius: 2px; border: 1px solid rgba(255,255,255,0.4); box-shadow: 0 1px 2px rgba(0,0,0,0.5); }
+  .grad-card-actions { display: flex; gap: 4px; align-items: center; justify-content: flex-end; }
+
+  /* 汎用モーダル */
+  .modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.8); z-index: 1000; align-items: center; justify-content: center; padding: 20px; }
+  .modal-box { background: #323232; border: 1px solid #6D8196; border-radius: 8px; padding: 14px; max-width: 90vw; max-height: 85vh; display: flex; flex-direction: column; gap: 9px; }
+  .modal-box img { max-width: 100%; max-height: 55vh; border: 1px dashed #6D8196; background: #EFEFE5; }
+
+  /* ★ iPad / Koder 向けファイル保存専用UIモーダル */
+  .save-modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.85); z-index: 3000; align-items: center; justify-content: center; padding: 20px; }
+  .save-box { background: #282828; border: 1.5px solid #6D8196; border-radius: 10px; padding: 16px; width: 440px; max-width: 94vw; display: flex; flex-direction: column; gap: 12px; box-shadow: 0 14px 40px rgba(0,0,0,0.8); }
+  .save-title { font-size: 14px; font-weight: 700; color: #FFFFE3; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #444; padding-bottom: 8px; }
+  .save-desc { font-size: 11px; color: #CBCBCB; line-height: 1.5; background: #1c1c1c; padding: 8px 10px; border-radius: 6px; border: 1px solid #333; }
+  .save-btn-group { display: flex; flex-direction: column; gap: 8px; }
+  .save-link-btn {
+    display: flex; align-items: center; justify-content: center; gap: 6px;
+    background: #5A6D82; color: #FFFFE3; text-decoration: none; padding: 10px; border-radius: 6px;
+    font-size: 12px; font-weight: 700; cursor: pointer; text-align: center; border: 1px solid #8296AB;
+  }
+  .save-link-btn:hover { background: #6D8196; }
+
+  .clip-anchor-grid {
+    display: grid; grid-template-columns: repeat(3, 24px); grid-template-rows: repeat(3, 24px);
+    gap: 4px; background: #1c1c1c; padding: 5px; border-radius: 5px; border: 1px solid #444;
+    width: fit-content; margin: auto;
+  }
+  .anchor-btn {
+    width: 24px; height: 24px; background: #303030; border: 1px solid #505050; border-radius: 3px;
+    cursor: pointer; display: flex; align-items: center; justify-content: center;
+  }
+  .anchor-btn.active { background: #6D8196; border-color: #FFFFE3; }
+  .anchor-dot { width: 5px; height: 5px; background: #CBCBCB; border-radius: 1px; }
+  .anchor-btn.active .anchor-dot { background: #FFFFE3; }
+</style>
+</head>
+<body>
+
+  <canvas id="noiseC" style="display:none;"></canvas>
+  <canvas id="expC" style="display:none;"></canvas>
+  
+  <input type="file" id="fileInput" accept="image/*" style="display:none;">
+  <input type="file" id="eyedropperFileInput" accept="image/*" style="display:none;">
+  <input type="file" id="photoGradFileInput" accept="image/*" style="display:none;">
+  <input type="file" id="testPreviewFileInput" accept="image/*" style="display:none;">
+  <input type="file" id="presetImportInput" accept=".json" style="display:none;">
+
+  <!-- 左側：ビューポート -->
+  <div class="preview-area" id="previewArea">
+    <div class="navigator-window" id="navWindow">
+      <div class="nav-header" id="navHeader">
+        <span class="nav-title">🧭 ナビゲーター</span>
+        <div class="nav-controls-header">
+          <button type="button" class="nav-btn-h" id="bMinNav" title="最小化">_</button>
+          <button type="button" class="nav-btn-h" id="bCloseNav" title="閉じる">✕</button>
+        </div>
+      </div>
+      <div class="nav-body" id="navBody">
+        <div class="nav-preview-box" id="navBox">
+          <canvas id="navCanvas"></canvas>
+          <div class="nav-viewport-rect" id="navViewport"></div>
+        </div>
+        <div class="nav-slider-row">
+          <input type="text" class="nav-zoom-input" id="navZoomVal" value="100%">
+          <input type="range" class="nav-slider" id="navZoomSlider" min="5" max="300" value="100">
+        </div>
+        <div class="nav-btn-row">
+          <button type="button" class="nav-btn" id="bZoomFit" title="画面に全体表示">⤢ 全体</button>
+          <button type="button" class="nav-btn" id="bFlipH" title="左右反転 (Aキー)">▷|◁ 反転</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="canvas-stage" id="canvasStage">
+      <canvas id="mainCanvas"></canvas>
+    </div>
+  </div>
+
+  <!-- 右側：サイドバー -->
+  <div class="sidebar">
+    <div class="header-row">
+      <div class="title">Dot Grid <span class="badge-pro">STUDIO</span></div>
+      <div class="header-btn-group">
+        <button type="button" class="btn-hist" id="bToggleNav" title="ナビゲーター表示">🧭</button>
+        <button type="button" class="btn-hist" id="bUndo" title="戻る (Ctrl/Cmd+Z)">↩️</button>
+        <button type="button" class="btn-hist" id="bRedo" title="やり直し (Ctrl/Cmd+Y)">↪️</button>
+      </div>
+    </div>
+
+    <!-- 1. レイヤーパネル -->
+    <div class="layer-panel">
+      <div class="layer-panel-header">
+        <span class="layer-panel-title">📚 レイヤー</span>
+        <div class="layer-actions">
+          <button type="button" class="btn-layer-add" id="bAddTone">＋ トーン</button>
+          <button type="button" class="btn-layer-add" id="bAddGrad">＋ グラデ</button>
+          <button type="button" class="btn-layer-add" id="bUploadImg" style="background:#5A6D82;">📷 写真</button>
+          <button type="button" class="btn-del" id="bDelLayer" title="選択レイヤー削除">🗑️</button>
+        </div>
+      </div>
+      <div class="layer-stack" id="layerStack"></div>
+    </div>
+
+    <!-- 2. レイヤー共通設定 -->
+    <div class="prop-section" id="layerCommonProps" style="display:none;">
+      <div class="r2">
+        <div class="ctrl">
+          <div class="lbl">合成モード</div>
+          <select id="pBlend">
+            <option value="source-over">通常</option>
+            <option value="multiply">乗算</option>
+            <option value="screen">スクリーン</option>
+            <option value="overlay">オーバーレイ</option>
+            <option value="soft-light">ソフトライト</option>
+            <option value="color">カラー (Color)</option>
+            <option value="color-burn">焼き込み</option>
+          </select>
+        </div>
+        <div class="ctrl">
+          <div class="lbl">不透明度<span class="val" id="vOpacity">100%</span></div>
+          <input type="range" id="pOpacity" min="0" max="100" value="100">
+        </div>
+      </div>
+    </div>
+
+    <!-- 3. 全レイヤー共通：枠の図形・変形設定 -->
+    <div class="prop-section" id="frameProps" style="display:none;">
+      <div style="display:flex; justify-content:space-between; align-items:center;">
+        <div class="sec-title">枠の図形・範囲</div>
+        <div style="display:flex; gap:6px; align-items:center;">
+          <button type="button" class="btn-sub" id="bSquare11" title="正方形(1:1)にする">1:1</button>
+          <label style="font-size:11px; display:flex; align-items:center; gap:3px; color:#FFFFE3; cursor:pointer;">
+            <input type="checkbox" id="aspectLock">
+            <span>🔒 固定</span>
+          </label>
+        </div>
+      </div>
+      <div class="r2">
+        <div class="ctrl">
+          <div class="lbl">枠の図形</div>
+          <select id="tFrameShape">
+            <option value="rect">長方形 (Rectangle)</option>
+            <option value="ellipse">楕円・丸 (Ellipse)</option>
+            <option value="roundrect">角丸長方形 (Round Rect)</option>
+            <option value="polygon">多角形 (Polygon)</option>
+            <option value="star">星型 (Star)</option>
+          </select>
+        </div>
+        <div class="ctrl" id="polyVertexWrap">
+          <div class="lbl">頂点数 / 角丸<span class="val" id="vVertex">5</span></div>
+          <input type="range" id="tVertex" min="3" max="10" value="5">
+        </div>
+      </div>
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-top:2px;">
+        <span style="font-size:11px; color:#CBCBCB; font-weight:700;">サイズ・位置</span>
+        <div style="display:flex; gap:4px;">
+          <button type="button" class="btn-sub" id="bCenter">中央</button>
+          <button type="button" class="btn-sub" id="bFit">全体</button>
+        </div>
+      </div>
+      <div class="r2">
+        <div class="ctrl"><div class="lbl">幅 (W)<span class="val" id="vTW">340</span></div><input type="number" id="tW" min="10" max="8000" value="340"></div>
+        <div class="ctrl"><div class="lbl">高さ (H)<span class="val" id="vTH">340</span></div><input type="number" id="tH" min="10" max="8000" value="340"></div>
+      </div>
+      <div class="r2">
+        <div class="ctrl"><div class="lbl">X 座標</div><input type="number" id="tX" value="0"></div>
+        <div class="ctrl"><div class="lbl">Y 座標</div><input type="number" id="tY" value="0"></div>
+      </div>
+    </div>
+
+    <!-- 4-A. トーンレイヤー個別設定 -->
+    <div class="prop-section" id="toneProps" style="display:none;">
+      <div class="sec-title">トーン設定</div>
+      <div class="r2">
+        <div class="ctrl">
+          <div class="lbl">ドット形状</div>
+          <select id="tDotShape">
+            <option value="square">四角 (Square)</option>
+            <option value="circle">丸 (Circle)</option>
+            <option value="hand">✏️ 手書き風 (Hand-drawn)</option>
+            <option value="diamond">ひし形 (Diamond)</option>
+            <option value="cross">十字 (Cross)</option>
+          </select>
+        </div>
+        <div class="ctrl">
+          <div class="lbl">配置</div>
+          <select id="tPat">
+            <option value="stagger">千鳥 (Stagger)</option>
+            <option value="grid">正方 (Grid)</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="ctrl" id="handJitterWrap">
+        <div class="lbl">
+          <span>手書きの崩し (ランダム歪み)</span>
+          <div>
+            <button type="button" class="btn-hist" id="bReseed" style="padding:1px 6px; font-size:10px;">🎲 再生成</button>
+            <span class="val" id="vHandJitter">45%</span>
+          </div>
+        </div>
+        <input type="range" id="tHandJitter" min="0" max="100" value="45">
+      </div>
+
+      <div class="ctrl">
+        <div class="lbl">エフェクトモード</div>
+        <select id="tMode">
+          <option value="color-halftone">🎨 カラーハーフトーン（画像色＋明暗）</option>
+          <option value="mosaic">カラーモザイク（画像色＋均等サイズ）</option>
+          <option value="halftone">単色ハーフトーン（単色＋明暗）</option>
+          <option value="normal">通常ドット（単色ベタ）</option>
+        </select>
+      </div>
+
+      <div id="toneColorSection" style="display:none; flex-direction:column; gap:4px; margin-top:2px;">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <div class="sec-title">インクカラー (単色)</div>
+          <button type="button" class="btn-sub" id="bOpenEyedropperTone">💧 画像からスポイト</button>
+        </div>
+        <div class="ink-pal" id="inkPal">
+          <div class="ink-chip active" data-c="#4A4A4A" style="background:#4A4A4A;"></div>
+          <div class="ink-chip" data-c="#6D8196" style="background:#6D8196;"></div>
+          <div class="ink-chip" data-c="#ff3399" style="background:#ff3399;"></div>
+          <div class="ink-chip" data-c="#0078bf" style="background:#0078bf;"></div>
+          <div class="ink-chip" data-c="#ff4820" style="background:#ff4820;"></div>
+          <div class="ink-chip" data-c="#f5b800" style="background:#f5b800;"></div>
+          <div class="ink-chip" data-c="#00a95c" style="background:#00a95c;"></div>
+        </div>
+        <div class="ctrl" style="margin-top:2px;"><input type="color" id="tColor" value="#4A4A4A"></div>
+      </div>
+
+      <div class="ctrl">
+        <div class="lbl">
+          <span>トーン角度</span>
+          <div>
+            <button type="button" class="btn-hist" id="bA45" style="padding:1px 5px; font-size:10px;">45°</button>
+            <button type="button" class="btn-hist" id="bA0" style="padding:1px 5px; font-size:10px;">0°</button>
+            <span class="val" id="vAng">45°</span>
+          </div>
+        </div>
+        <input type="range" id="tAng" min="0" max="90" value="45">
+      </div>
+
+      <div class="r2">
+        <div class="ctrl"><div class="lbl">サイズ<span class="val" id="vS">40</span></div><input type="range" id="tSize" min="1" max="120" value="40"></div>
+        <div class="ctrl"><div class="lbl">間隔<span class="val" id="vG">2</span></div><input type="range" id="tGap" min="0" max="80" value="2"></div>
+      </div>
+
+      <div class="ctrl">
+        <div class="lbl">版ズレ (印刷ズレ)<span class="val" id="vMisp">0px</span></div>
+        <input type="range" id="tMisprint" min="0" max="15" value="0">
+      </div>
+    </div>
+
+    <!-- 4-B. グラデーションマップ -->
+    <div class="prop-section" id="gradProps" style="display:none;">
+      <div style="display:flex; justify-content:space-between; align-items:center;">
+        <div class="sec-title">🌈 グラデーションマップ</div>
+        <div style="display:flex; gap:4px;">
+          <button type="button" class="btn-sub" id="bAddGradPreset" title="現在の設定をセットに永続保存">＋ 保存</button>
+          <button type="button" class="btn-sub" id="bInvertGrad">⇄ 反転</button>
+        </div>
+      </div>
+
+      <button type="button" class="btn-act" id="bOpenPhotoGradModal" style="background: linear-gradient(135deg, #4f6575, #6D8196); padding:7px; font-size:11px;">
+        ✨ 写真からグラデーションマップ自動生成
+      </button>
+
+      <div class="grad-editor-box">
+        <div class="grad-bar-wrap" id="gradBarWrap">
+          <div class="grad-bar" id="gradBar"></div>
+          <div id="gradPinContainer"></div>
+        </div>
+        <div class="r2" style="margin-top:6px;">
+          <div class="ctrl">
+            <div class="lbl">位置 (%) <span id="vGradNodeIndex" style="font-size:10px; color:#6D8196;"></span></div>
+            <input type="number" id="gradNodePos" min="0" max="100" value="0">
+          </div>
+          <div class="ctrl">
+            <div class="lbl">指定色</div>
+            <input type="color" id="gradNodeColor" value="#000000">
+          </div>
+        </div>
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-top:3px;">
+          <div style="display:flex; gap:4px;">
+            <button type="button" class="btn-sub" id="bOpenEyedropperGrad" style="background:#5A6D82; color:#fff;">💧 スポイト抽出</button>
+            <button type="button" class="btn-sub" id="bExportCurrentGrd" title="このグラデをクリスタ用.grdで保存">💾 .grd</button>
+          </div>
+          <button type="button" class="btn-del" id="bDelGradNode">🗑️ ピン削除</button>
+        </div>
+      </div>
+
+      <div class="ctrl" style="margin-top:2px;">
+        <div class="lbl" style="align-items:center;">
+          <span>グラデーションセット (永続保存)</span>
+          <div style="display:flex; gap:3px;">
+            <button type="button" class="btn-sub" id="bExportPresetJson" style="font-size:9px; padding:1px 4px;" title="全セットをバックアップ保存">📤書出</button>
+            <button type="button" class="btn-sub" id="bImportPresetJson" style="font-size:9px; padding:1px 4px;" title="バックアップから復元">📥読込</button>
+            <button type="button" class="btn-sub" id="bResetGradPresets" style="font-size:9px; padding:1px 4px;">初期化</button>
+          </div>
+        </div>
+        <div class="grad-preset-list" id="gradPresetList"></div>
+      </div>
+    </div>
+
+    <!-- 4-C. 写真レイヤー情報 -->
+    <div class="prop-section" id="imgProps" style="display:none;">
+      <div class="sec-title">写真レイヤー</div>
+      <span id="imgInfoText" style="font-size:11px; color:#CBCBCB;">写真読込済み</span>
+      <button type="button" class="btn-sub" id="bGenGradFromImgLayer" style="margin-top:4px; background:#4f6575; color:#fff;">✨ この写真からグラデを生成</button>
+    </div>
+
+    <!-- 5. キャンバスサイズ変更 & 保存 -->
+    <div class="prop-section">
+      <div style="display:flex; justify-content:space-between; align-items:center;">
+        <div class="sec-title">キャンバス & 保存</div>
+        <button type="button" class="btn-sub" id="bOpenCanvasModal" style="border-color:#6D8196; color:#FFFFE3;">📐 キャンバスサイズ</button>
+      </div>
+
+      <div class="switch-grp">
+        <button type="button" class="sw-btn active" id="bModeComp">🖼️ 通常合成</button>
+        <button type="button" class="sw-btn" id="bModeDot">⚪ トーンのみ(透過＋グラデ反映)</button>
+      </div>
+
+      <div class="ctrl">
+        <div class="lbl">GRAIN (砂目ノイズ)<span class="val" id="vGrain">0%</span></div>
+        <input type="range" id="grain" min="0" max="80" value="0">
+      </div>
+
+      <div class="r2" style="margin-top:4px;">
+        <button type="button" class="btn-act" id="bExport">🖼️ PNG書き出し</button>
+        <button type="button" class="btn-act btn-act-psd" id="bExportPSD">💾 PSD書き出し</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ★ 写真から多階調グラデーションマップ自動生成モーダル -->
+  <div class="photo-grad-modal" id="photoGradModal">
+    <div class="photo-grad-box">
+      <div class="photo-grad-header">
+        <div style="font-size:13px; font-weight:700; color:#FFFFE3; display:flex; align-items:center; gap:6px;">
+          <span>✨ 写真から多階調グラデーションマップ自動生成</span>
+        </div>
+        <div style="display:flex; gap:6px; align-items:center;">
+          <button type="button" class="btn-act" id="bExportAllGrdPack" style="background:#4a637d; padding:5px 10px; font-size:11px;">📦 全6種を1つの.grdで保存</button>
+          <button type="button" class="btn-del" id="bClosePhotoGrad" style="font-size:13px;">✕</button>
+        </div>
+      </div>
+
+      <div class="photo-grad-top">
+        <div class="photo-grad-preview-box">
+          <div class="lbl" style="font-size:10px;">
+            <span>リアルタイム効果プレビュー (イラスト/写真に適用)</span>
+            <div style="display:flex; gap:3px;">
+              <button type="button" class="btn-sub" id="bLoadTestPhoto" style="font-size:9px; padding:1px 5px;">📁 別画像を選択</button>
+              <button type="button" class="btn-sub" id="bResetTestPhoto" style="font-size:9px; padding:1px 5px;">解析画像に戻す</button>
+            </div>
+          </div>
+          <div class="photo-grad-preview-canvas-wrap" id="testPreviewDropZone" title="クリックまたは画像をドラッグ＆ドロップしてプレビューを変更">
+            <canvas id="testGradPreviewCanvas"></canvas>
+          </div>
+        </div>
+
+        <div class="photo-grad-controls-box">
+          <div style="display:flex; gap:6px; align-items:center;">
+            <button type="button" class="btn-act" id="bSelectPhotoGradFile" style="padding:6px 10px; font-size:11px; flex:1;">📁 解析する写真を開く</button>
+            <button type="button" class="btn-sub" id="bUseCanvasPhoto" style="padding:6px 10px; font-size:11px; flex:1;">🖼️ キャンバスの写真</button>
+          </div>
+          
+          <div style="display:flex; flex-direction:column; gap:2px;">
+            <div class="lbl" style="font-size:10px;">
+              <span>シャドウリフト (暗部の色彩・明度補正)</span>
+              <span class="val" id="vShadowLift">30</span>
+            </div>
+            <input type="range" id="pShadowLift" min="0" max="100" value="30">
+          </div>
+
+          <div class="r2" style="gap:6px;">
+            <div class="ctrl">
+              <div class="lbl" style="font-size:10px;">合成モード</div>
+              <select id="prevBlendMode" style="font-size:10px; padding:3px;">
+                <option value="color" selected>カラー (Color)</option>
+                <option value="source-over">通常 (Normal)</option>
+                <option value="soft-light">ソフトライト (Soft Light)</option>
+                <option value="overlay">オーバーレイ (Overlay)</option>
+                <option value="multiply">乗算 (Multiply)</option>
+                <option value="screen">スクリーン (Screen)</option>
+                <option value="color-burn">焼き込み (Color Burn)</option>
+              </select>
+            </div>
+            <div class="ctrl">
+              <div class="lbl" style="font-size:10px;">
+                <span>不透明度</span>
+                <span class="val" id="vPrevOpacity">30%</span>
+              </div>
+              <input type="range" id="prevOpacity" min="0" max="100" value="30">
+            </div>
+          </div>
+
+          <div style="font-size:9.5px; color:#aaa; line-height:1.3; background:#181818; padding:5px 7px; border-radius:4px; border:1px solid #333;">
+            💡 プレビュー中の合成モードと不透明度は、カードの「🎨 適用」を押した際にもレイヤーへそのまま引き継がれます。
+          </div>
+        </div>
+      </div>
+
+      <div class="photo-grad-cards" id="photoGradCardsContainer">
+        <div style="padding:24px; text-align:center; color:#888; font-size:11px;">
+          上の「解析する写真を開く」から写真を読み込むと、<br>色彩・光・シャドウを分析した6種類のグラデーションが自動生成されます。
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- スポイトモーダル -->
+  <div class="eyedropper-modal" id="eyedropperModal">
+    <div class="eyedropper-box">
+      <div class="eyedropper-header">
+        <span style="font-size:12px; font-weight:700; color:#FFFFE3;">💧 画像からスポイト (カラー抽出)</span>
+        <div style="display:flex; gap:5px;">
+          <button type="button" class="btn-sub" id="bLoadEyePhoto">📁 画像を選択</button>
+          <button type="button" class="btn-sub" id="bLoadEyeCanvas">🖼️ 作業キャンバス</button>
+          <button type="button" class="btn-del" id="bCloseEyedropper" style="font-size:13px;">✕</button>
+        </div>
+      </div>
+
+      <div class="eyedropper-preview-wrap" id="eyedropperWrap">
+        <canvas id="eyedropperCanvas"></canvas>
+        <div class="eyedropper-loupe" id="eyedropperLoupe">
+          <canvas id="loupeCanvas" width="54" height="54"></canvas>
+        </div>
+      </div>
+
+      <div class="grad-editor-box" id="eyeGradEditorArea">
+        <div class="grad-bar-wrap" id="eyeGradBarWrap" style="margin:4px 6px 14px 6px;">
+          <div class="grad-bar" id="eyeGradBar"></div>
+          <div id="eyeGradPinContainer"></div>
+        </div>
+        <div class="r2" style="gap:6px;">
+          <div class="ctrl">
+            <div class="lbl">位置 (%) <span id="vEyeGradNodeIndex" style="font-size:10px; color:#6D8196;"></span></div>
+            <input type="number" id="eyeGradNodePos" min="0" max="100" value="0">
+          </div>
+          <div class="ctrl">
+            <div class="lbl">指定色</div>
+            <input type="color" id="eyeGradNodeColor" value="#000000">
+          </div>
+        </div>
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-top:2px;">
+          <div style="display:flex; gap:4px;">
+            <button type="button" class="btn-sub" id="bEyeAddPin">＋ ピン追加</button>
+            <button type="button" class="btn-del" id="bEyeDelPin">🗑️ 削除</button>
+            <button type="button" class="btn-sub" id="bEyeInvert">⇄ 反転</button>
+          </div>
+          <label style="font-size:10px; color:#FFFFE3; display:flex; align-items:center; gap:3px; cursor:pointer;">
+            <input type="checkbox" id="eyeAutoStep" checked>
+            <span>⚡ 次のピンへ自動送り (1ステップずつ)</span>
+          </label>
+        </div>
+      </div>
+
+      <div class="eyedropper-bottom-bar">
+        <div style="display:flex; align-items:center; gap:8px;">
+          <div class="color-swatch-large" id="eyedropperSwatch" style="background:#000000;"></div>
+          <div>
+            <div style="font-size:12px; font-weight:700;" id="eyedropperHex">#000000</div>
+            <div style="font-size:10px; color:#aaa;">画像をタップした位置の色を適用</div>
+          </div>
+        </div>
+        <button type="button" class="btn-act" id="bApplyEyedropperColor" style="padding:6px 14px;">この色に決定</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- キャンバスサイズ変更ダイアログ -->
+  <div class="modal" id="canvasModal">
+    <div class="modal-box" style="width: 310px;">
+      <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #555; padding-bottom:5px;">
+        <span style="font-size:12px; font-weight:bold; color:#FFFFE3;">キャンバスサイズを変更</span>
+        <button type="button" class="btn-del" id="bCloseCanvasModal" style="font-size:13px; padding:2px 5px;">✕</button>
+      </div>
+      <div class="r2">
+        <div class="ctrl"><div class="lbl">幅 (W) px</div><input type="number" id="cModalW" value="800"></div>
+        <div class="ctrl"><div class="lbl">高さ (H) px</div><input type="number" id="cModalH" value="600"></div>
+      </div>
+      <div class="ctrl">
+        <div class="lbl" style="justify-content:center; margin-bottom:4px;">基準点 (アンカー)</div>
+        <div class="clip-anchor-grid" id="anchorGrid">
+          <div class="anchor-btn" data-anchor="tl"><div class="anchor-dot"></div></div>
+          <div class="anchor-btn" data-anchor="tc"><div class="anchor-dot"></div></div>
+          <div class="anchor-btn" data-anchor="tr"><div class="anchor-dot"></div></div>
+          <div class="anchor-btn" data-anchor="ml"><div class="anchor-dot"></div></div>
+          <div class="anchor-btn active" data-anchor="center"><div class="anchor-dot"></div></div>
+          <div class="anchor-btn" data-anchor="mr"><div class="anchor-dot"></div></div>
+          <div class="anchor-btn" data-anchor="bl"><div class="anchor-dot"></div></div>
+          <div class="anchor-btn" data-anchor="bc"><div class="anchor-dot"></div></div>
+          <div class="anchor-btn" data-anchor="br"><div class="anchor-dot"></div></div>
+        </div>
+      </div>
+      <div class="r2" style="margin-top:4px;">
+        <button type="button" class="btn-act" id="bApplyCanvasModal">OK</button>
+        <button type="button" class="btn-sub" id="bCancelCanvasModal">キャンセル</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- PNG保存モーダル -->
+  <div class="modal" id="modal">
+    <div class="modal-box">
+      <img id="mImg" alt="Output">
+      <p style="font-size:12px; font-weight:700; text-align:center;">画像の上で長押し（または右クリック）して保存してください</p>
+      <button type="button" class="btn-sub" id="bCloseM">閉じる</button>
+    </div>
+  </div>
+
+  <!-- ★ iPad / Koder向けファイル保存専用モーダル -->
+  <div class="save-modal" id="saveModal">
+    <div class="save-box">
+      <div class="save-title">
+        <span id="saveModalTitle">💾 ファイルの保存</span>
+        <button type="button" class="btn-del" id="bCloseSaveModal">✕</button>
+      </div>
+      <div class="save-desc" id="saveModalDesc">
+        ファイルが正常に生成されました。以下の方法からiPadへ保存してください。
+      </div>
+      <div class="save-btn-group">
+        <button type="button" class="save-link-btn" id="bModalShare" style="background:#4f6575;">
+          📤 iPadの共有シートを開く（「ファイル」に保存）
+        </button>
+        <a class="save-link-btn" id="bModalDirectDownload" download="">
+          📥 ダウンロードリンク（タップして保存）
+        </a>
+        <button type="button" class="save-link-btn" id="bModalNewTab" style="background:#383838; border-color:#555;">
+          ↗️ 新しいタブで開く
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const $ = id => document.getElementById(id);
+
+    const STAGE_PAD = 400;
+    let baseW = 800, baseH = 600;
+    let saveMode = 'comp';
+    let layerCounter = 0;
+    let activeLayerId = null;
+
+    let layers = [];
+    let selectedAnchor = 'center';
+
+    let panX = 0, panY = 0;
+    let zoom = 1.0;
+    let isFlipH = false;
+
+    const imageStore = new Map();
+    const cachedSampleCanvas = document.createElement('canvas');
+
+    function pseudoRandom(seed) {
+      const x = Math.sin(seed) * 10000;
+      return x - Math.floor(x);
+    }
+
+    // =========================================================
+    // ■ 4. iPad / WebKit / Koder 共通ファイル保存エンジン
+    // =========================================================
+    let currentSaveBlob = null;
+    let currentSaveFileName = '';
+    let currentSaveMimeType = '';
+    let currentSaveUrl = '';
+    let currentSaveDataUrl = '';
+
+    // iOS / iPadOS の WKWebView 系では blob: URL + download が
+    // 環境によって反応しないことがあるため、保存用リンクには
+    // data: URL を使うフォールバックを用意する。
+    function isAppleMobileLike() {
+      const ua = navigator.userAgent || '';
+      const platform = navigator.platform || '';
+      const iPadLike = /iPad|iPhone|iPod/i.test(ua) ||
+        (platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+      return iPadLike;
+    }
+
+    function blobToDataURL(blob) {
+      return new Promise((resolve, reject) => {
+        try {
+          const reader = new FileReader();
+          reader.onload = () => resolve(String(reader.result || ''));
+          reader.onerror = () => reject(reader.error || new Error('FileReader error'));
+          reader.readAsDataURL(blob);
+        } catch (e) {
+          reject(e);
+        }
+      });
+    }
+
+    async function saveBinaryFile(blob, fileName, mimeType) {
+      currentSaveBlob = blob;
+      currentSaveFileName = fileName;
+      currentSaveMimeType = mimeType;
+
+      if (currentSaveUrl) {
+        URL.revokeObjectURL(currentSaveUrl);
+      }
+      currentSaveUrl = URL.createObjectURL(blob);
+
+      let fileObj = null;
+      let shareSupported = (typeof navigator.share === 'function');
+      let canShareFiles = false;
+
+      try {
+        if (typeof File !== 'undefined') {
+          fileObj = new File([blob], fileName, {
+            type: mimeType || 'application/octet-stream',
+            lastModified: Date.now()
+          });
+
+          // canShare は「共有できるか」の補助判定にのみ使用する。
+          // iPadOS / Koder では false でも navigator.share(files) が実際には
+          // 動作する環境があるため、ここで保存UIを隠さない。
+          if (shareSupported && typeof navigator.canShare === 'function') {
+            try {
+              canShareFiles = navigator.canShare({ files: [fileObj] }) === true;
+            } catch (e) {
+              console.warn('[SAVE DEBUG] canShare check failed:', e);
+            }
+          }
+        }
+      } catch (e) {
+        console.warn('[SAVE DEBUG] File object creation failed:', e);
+      }
+
+      console.log('[SAVE DEBUG]', {
+        fileName,
+        size: blob.size,
+        mimeType,
+        shareSupported,
+        canShareFiles,
+        userActivation: navigator.userActivation ? navigator.userActivation.isActive : 'unknown'
+      });
+
+      // ★ ここでは navigator.share() を呼ばない。
+      // バイナリ生成処理の途中から呼び出すと iPadOS が「ユーザー操作直後」
+      // と認識しない場合があるため、保存モーダル内のボタンをユーザーが
+      // タップした瞬間に navigator.share() を実行する。
+      openSaveModal(
+        blob,
+        fileName,
+        mimeType,
+        currentSaveUrl,
+        shareSupported,
+        fileObj
+      );
+
+      return { success: true, method: 'modal' };
+    }
+
+    function openSaveModal(blob, fileName, mimeType, url, shareSupported, fileObj) {
+      $('saveModalTitle').textContent = `💾 ${fileName} の保存`;
+      $('saveModalDesc').innerHTML = `
+        <b>ファイルサイズ:</b> ${(blob.size / 1024).toFixed(1)} KB<br>
+        iPadでは「共有シートを開く」をタップすると、iPadOSの共有メニューから「ファイルに保存」を選べます。<br>
+        <span style="color:#FFFFE3; font-size:10px;">※共有シートが表示されない環境では、通常のダウンロードリンクも利用できます。</span>
+      `;
+
+      const shareBtn = $('bModalShare');
+      const directBtn = $('bModalDirectDownload');
+      const newTabBtn = $('bModalNewTab');
+
+      // 直接ダウンロードのフォールバック
+      directBtn.href = url;
+      directBtn.download = fileName;
+      directBtn.target = '_self';
+      directBtn.rel = 'noopener';
+
+      // ★ iPadOSネイティブ共有シート
+      // canShare() の結果ではなく、navigator.share() の存在だけでボタンを表示。
+      // 実際の navigator.share() はこの「ボタンのタップイベント」から直接呼ぶ。
+      if (shareSupported && fileObj) {
+        shareBtn.style.display = 'flex';
+        shareBtn.textContent = '📤 iPadの共有シートを開く（「ファイル」に保存）';
+        shareBtn.onclick = async (event) => {
+          event.preventDefault();
+          event.stopPropagation();
+
+          try {
+            const shareData = {
+              files: [fileObj],
+              title: fileName
+            };
+
+            console.log('[SAVE DEBUG] Native share button tapped', {
+              userActivation: navigator.userActivation ? navigator.userActivation.isActive : 'unknown',
+              fileName,
+              fileSize: fileObj.size,
+              fileType: fileObj.type
+            });
+
+            // ★ awaitを挟まず、タップイベント直下でnavigator.share()を起動
+            const sharePromise = navigator.share(shareData);
+
+            if (sharePromise && typeof sharePromise.then === 'function') {
+              await sharePromise;
+            }
+
+            console.log('[SAVE DEBUG] navigator.share succeeded.');
+          } catch (e) {
+            if (e && e.name === 'AbortError') {
+              console.log('[SAVE DEBUG] User dismissed share sheet.');
+              return;
+            }
+
+            console.error('[SAVE DEBUG] navigator.share failed:', e);
+
+            const msg = (e && e.message) ? e.message : String(e);
+            alert(
+              'iPadOSの共有シートを開けませんでした。\\n\\n' +
+              'エラー: ' + msg +
+              '\\n\\n' +
+              '「ダウンロードリンク（タップして保存）」をお試しください。'
+            );
+          }
+        };
+      } else {
+        shareBtn.style.display = 'none';
+      }
+
+      // 新規タブ
+      newTabBtn.onclick = () => {
+        const opened = window.open(url, '_blank');
+        if (!opened) {
+          window.location.href = url;
+        }
+      };
+
+      $('saveModal').style.display = 'flex';
+    }
+
+    $('bCloseSaveModal').onclick = () => {
+      $('saveModal').style.display = 'none';
+    };
+
+    // =========================================================
+    // ■ 2. 正式 Photoshop GRD (8BGR / Version 5) バイナリシリアライザ
+    // =========================================================
+    class PhotoshopActionWriter {
+      constructor() { this.chunks = []; }
+      u8(v) { this.chunks.push(new Uint8Array([v & 0xFF])); }
+      u16(v) {
+        const b = new Uint8Array(2);
+        new DataView(b.buffer).setUint16(0, v, false);
+        this.chunks.push(b);
+      }
+      u32(v) {
+        const b = new Uint8Array(4);
+        new DataView(b.buffer).setUint32(0, v >>> 0, false);
+        this.chunks.push(b);
+      }
+      i32(v) {
+        const b = new Uint8Array(4);
+        new DataView(b.buffer).setInt32(0, v | 0, false);
+        this.chunks.push(b);
+      }
+      f64(v) {
+        const b = new Uint8Array(8);
+        new DataView(b.buffer).setFloat64(0, Number(v), false);
+        this.chunks.push(b);
+      }
+      ascii(s) {
+        const b = new Uint8Array(s.length);
+        for (let i = 0; i < s.length; i++) b[i] = s.charCodeAt(i) & 0xFF;
+        this.chunks.push(b);
+      }
+      key(s) {
+        const k = (s + '    ').slice(0, 4);
+        this.ascii(k);
+      }
+      // Photoshop ActionDescriptor ID: 0 = 4-byte key, non-zero = Unicode ID.
+      id(s) {
+        this.u32(0);
+        this.key(s);
+      }
+      // Plain Unicode string used where the GRD descriptor stores a text value.
+      unicode(s) {
+        s = String(s ?? '');
+        this.u32(s.length);
+        const b = new Uint8Array(s.length * 2);
+        const v = new DataView(b.buffer);
+        for (let i = 0; i < s.length; i++) v.setUint16(i * 2, s.charCodeAt(i), false);
+        this.chunks.push(b);
+      }
+      // ActionDescriptor object names are Pascal-style Unicode strings whose
+      // length includes the terminating NUL. This is important for CSP.
+      unicodeZ(s) {
+        s = String(s ?? '');
+        this.u32(s.length + 1);
+        const b = new Uint8Array((s.length + 1) * 2);
+        const v = new DataView(b.buffer);
+        for (let i = 0; i < s.length; i++) v.setUint16(i * 2, s.charCodeAt(i), false);
+        v.setUint16(s.length * 2, 0, false);
+        this.chunks.push(b);
+      }
+      // Serialize a Photoshop ActionDescriptor object value.
+      // Format: type=Objc, Unicode object name (NUL included), class ID, item count.
+      object(classKey, itemCount, objectName = '') {
+        this.key('Objc');
+        this.unicodeZ(objectName);
+        this.id(classKey);
+        this.u32(itemCount);
+      }
+      // Photoshop stores each double item in these descriptors followed by
+      // four zero bytes. This padding is present in CSP-readable GRD files.
+      descriptorDouble(keyName, value) {
+        this.id(keyName);
+        this.key('doub');
+        this.f64(value);
+      }
+      toBuffer() {
+        const total = this.chunks.reduce((acc, cur) => acc + cur.byteLength, 0);
+        const res = new Uint8Array(total);
+        let off = 0;
+        for (const c of this.chunks) {
+          res.set(c, off);
+          off += c.byteLength;
+        }
+        return res.buffer;
+      }
+    }
+
+    function serializeToPhotoshopGRD(gradList) {
+      const w = new PhotoshopActionWriter();
+      const list = Array.isArray(gradList) ? gradList : [];
+
+      // 1. Magic Header & Version (8BGR, Version 5)
+      w.ascii('8BGR');
+      w.u16(5);
+
+      // 2. Root Descriptor (matches CSP-readable GRD descriptor header)
+      w.u32(16);           // ActionDescriptor version
+      w.unicodeZ('');       // Empty descriptor name, represented by one terminating NUL
+      w.id('null');        // ClassID = 'null'
+      w.u32(1);             // Number of items = 1
+
+      // 3. GrdL (Gradient List)
+      w.id('GrdL');
+      w.key('VlLs');
+      w.u32(list.length);
+
+      list.forEach(grad => {
+        const nodes = Array.isArray(grad.nodes) ? [...grad.nodes].sort((a, b) => Number(a.pos) - Number(b.pos)) : [];
+
+        // Each GRD list entry has a CSP/Photoshop wrapper object named Gradient
+        // containing one `Grad` object. The inner object contains the 5 gradient fields.
+        w.object('Grdn', 1, 'Gradient');
+        w.id('Grad');
+        w.object('Grdn', 5, 'Gradient');
+
+        // Item 1: Nm (name). TEXT strings also include the terminating NUL.
+        w.id('Nm  ');
+        w.key('TEXT');
+        w.unicodeZ(grad.name || 'Gradient');
+
+        // Item 2: GrdF (Gradient Form = Custom Stops)
+        w.id('GrdF');
+        w.key('enum');
+        w.id('GrdF');
+        w.id('CstS');
+
+        // Item 3: Intr (Interpolation / smoothness)
+        w.id('Intr');
+        w.key('doub');
+        w.f64(4096.0);
+
+        // Item 4: Clrs (Color Stops)
+        w.id('Clrs');
+        w.key('VlLs');
+        w.u32(nodes.length);
+
+        nodes.forEach(node => {
+          const rgb = hexToRgb(node.color || '#000000');
+
+          // Color-stop object: empty object name represented as one NUL.
+          w.object('Clrt', 4, '');
+
+          // Clr (RGB Color Descriptor)
+          w.id('Clr ');
+          w.object('RGBC', 3, '');
+          w.descriptorDouble('Rd  ', rgb.r);
+          w.descriptorDouble('Grn ', rgb.g);
+          w.descriptorDouble('Bl  ', rgb.b);
+
+          // Type (User Stop)
+          w.id('Type');
+          w.key('enum');
+          w.id('Clry');
+          w.id('UsrS');
+
+          // Lctn (0 to 4096)
+          w.id('Lctn');
+          w.key('long');
+          w.i32(Math.max(0, Math.min(4096, Math.round(Number(node.pos || 0) * 4096))));
+
+          // Mdpn (50%)
+          w.id('Mdpn');
+          w.key('long');
+          w.i32(50);
+        });
+
+        // Item 5: Trns (Full opacity at 0% and 100%)
+        w.id('Trns');
+        w.key('VlLs');
+        w.u32(2);
+
+        [0, 4096].forEach(loc => {
+          w.object('TrnS', 3, '');
+
+          w.id('Opct');
+          w.key('UntF');
+          w.key('#Prc');
+          w.f64(100.0);
+
+          w.id('Lctn');
+          w.key('long');
+          w.i32(loc);
+
+          w.id('Mdpn');
+          w.key('long');
+          w.i32(50);
+        });
+      });
+
+      const buffer = w.toBuffer();
+
+      // ■ GRD 生成後ヘッダー自己検証 (8BGR / 5)
+      const u8 = new Uint8Array(buffer, 0, 6);
+      const magic = String.fromCharCode(u8[0], u8[1], u8[2], u8[3]);
+      const version = (u8[4] << 8) | u8[5];
+      if (magic !== '8BGR' || version !== 5) {
+        throw new Error(`Invalid GRD binary header: magic=${magic}, version=${version}`);
+      }
+
+      console.log('[GRD DEBUG]', {
+        gradientCount: list.length,
+        nodeCount: list.map(g => Array.isArray(g.nodes) ? g.nodes.length : 0),
+        binarySize: buffer.byteLength,
+        magicHeader: magic,
+        version: version
+      });
+
+      return buffer;
+    }
+
+    async function exportGRDFiles(gradList, fileName) {
+      try {
+        const buffer = serializeToPhotoshopGRD(gradList);
+        const blob = new Blob([buffer], { type: 'application/octet-stream' });
+        const grdName = String(fileName || 'gradient.grd').replace(/\.txt$/i, '').replace(/(\.grd)+$/i, '.grd');
+        await saveBinaryFile(blob, grdName, 'application/octet-stream');
+      } catch (err) {
+        console.error('[GRD DEBUG ERROR]', err);
+        alert('GRD生成エラー: ' + err.message);
+      }
+    }
+
+    // =========================================================
+    // ■ 1. 安定版 PSD 書き出し処理
+    // =========================================================
+    async function exportToPSD(layers, baseW, baseH, renderLayerFn) {
+      try {
+        const isLoaded = (typeof agPsd !== 'undefined' && typeof agPsd.writePsd === 'function');
+        console.log('[PSD DEBUG] Start exportToPSD', {
+          agPsdLoaded: isLoaded,
+          layerCount: layers ? layers.length : 0,
+          documentSize: `${baseW}x${baseH}`
+        });
+
+        if (!isLoaded) {
+          if (window.__agPsdLoadFailed) {
+            alert('PSD生成ライブラリ(ag-psd)の読み込みに失敗しました。\nインターネット接続、またはKoderのアクセス権限をご確認ください。');
+          } else {
+            alert('PSD生成ライブラリ(ag-psd)が準備できていません。再読み込みしてください。');
+          }
+          return;
+        }
+
+        if (!layers || layers.length === 0) {
+          alert('書き出すレイヤーがありません。');
+          return;
+        }
+
+        const blendMap = {
+          'source-over': 'normal',
+          'multiply': 'multiply',
+          'screen': 'screen',
+          'overlay': 'overlay',
+          'soft-light': 'soft light',
+          'color': 'color',
+          'color-burn': 'color burn'
+        };
+
+        // トーンの色サンプリング用に画像レイヤーを事前合成
+        const samplingBuffer = document.createElement('canvas');
+        samplingBuffer.width = baseW;
+        samplingBuffer.height = baseH;
+        const sampleCtx = samplingBuffer.getContext('2d');
+        layers.forEach(l => {
+          if (l.visible && l.type === 'image') {
+            const imgC = imageStore.get(l.imgStoreId);
+            if (imgC) sampleCtx.drawImage(imgC, l.x, l.y, l.w, l.h);
+          }
+        });
+
+        let prevLayerCanvas = null;
+        const psdChildren = layers.map((layer, index) => {
+          const rendered = renderLayerFn(layer, baseW, baseH, samplingBuffer, prevLayerCanvas);
+          prevLayerCanvas = rendered;
+
+          const layerCanvas = document.createElement('canvas');
+          layerCanvas.width = baseW;
+          layerCanvas.height = baseH;
+          layerCanvas.getContext('2d').drawImage(rendered, 0, 0);
+
+          const rawOpacity = layer.opacity !== undefined ? layer.opacity : 100;
+          const opacity = Math.max(0, Math.min(1, rawOpacity / 100));
+
+          return {
+            name: layer.name || `レイヤー ${index + 1}`,
+            canvas: layerCanvas,
+            left: 0,
+            top: 0,
+            opacity: opacity,
+            blendMode: blendMap[layer.blend] || 'normal',
+            clipping: !!layer.clip,
+            hidden: !layer.visible
+          };
+        });
+
+        const psdDoc = {
+          width: baseW,
+          height: baseH,
+          children: psdChildren
+        };
+
+        const buffer = agPsd.writePsd(psdDoc);
+        console.log('[PSD DEBUG] writePsd result', {
+          byteLength: buffer ? buffer.byteLength : 0
+        });
+
+        if (!buffer || buffer.byteLength === 0) {
+          throw new Error('PSDバイナリ生成結果が0バイトです。');
+        }
+
+        const blob = new Blob([buffer], { type: 'application/vnd.adobe.photoshop' });
+        console.log('[PSD DEBUG] Blob created', { size: blob.size });
+
+        await saveBinaryFile(blob, 'artwork.psd', 'application/vnd.adobe.photoshop');
+
+      } catch (err) {
+        console.error('[PSD DEBUG ERROR]', err);
+        alert('PSD書き出しエラー: ' + err.message + '\n\n' + (err.stack || ''));
+      }
+    }
+
+    $('bExportPSD').onclick = () => {
+      exportToPSD(layers, baseW, baseH, renderSingleLayer);
+    };
+
+    // =========================================================
+    // ■ グラデーション管理・UI同期・永続化
+    // =========================================================
+    function generate14NodeGradient(startHex, midHex1, midHex2, endHex) {
+      const stops = [
+        { p: 0.0, c: startHex },
+        { p: 0.35, c: midHex1 },
+        { p: 0.70, c: midHex2 },
+        { p: 1.0, c: endHex }
+      ];
+      const nodes = [];
+      const count = 14;
+      for (let i = 0; i < count; i++) {
+        const pos = i === 0 ? 0 : (i === count - 1 ? 1 : Math.round((i / (count - 1)) * 100) / 100);
+        nodes.push({ pos, color: sampleGradientColor(stops.map(s => ({ pos: s.p, color: s.c })), pos) });
+      }
+      return nodes;
+    }
+
+    const rawDefaultPresets = [
+      { name: "ニュアンスチェンジ 1", start: "#1b1828", m1: "#a84368", m2: "#e8a89b", end: "#fef6eb" },
+      { name: "ニュアンスチェンジ 2", start: "#0d2b35", m1: "#6a284e", m2: "#ea6e65", end: "#fff0d4" },
+      { name: "ニュアンスチェンジ 3", start: "#161b33", m1: "#386f77", m2: "#8dd4be", end: "#f5fffb" },
+      { name: "ニュアンスチェンジ 4", start: "#251230", m1: "#7a2267", m2: "#d97443", end: "#fff5df" },
+      { name: "ニュアンスチェンジ 5", start: "#1a1f3c", m1: "#4f6575", m2: "#c9b689", end: "#ebf5f7" },
+      { name: "ニュアンスチェンジ 6", start: "#0e292d", m1: "#276068", m2: "#74b3b8", end: "#f0faf9" },
+      { name: "ニュアンスチェンジ 7", start: "#241830", m1: "#60477a", m2: "#b59bc9", end: "#faf5ff" },
+      { name: "ニュアンスチェンジ 8", start: "#101d2d", m1: "#33516c", m2: "#7fa3b7", end: "#edf4f7" },
+      { name: "ニュアンスチェンジ 9", start: "#0b1238", m1: "#541e68", m2: "#ca4e65", end: "#ffecbe" },
+      { name: "ニュアンスチェンジ 10", start: "#142618", m1: "#46633b", m2: "#9bb884", end: "#f3faee" },
+      { name: "新規グラデーション 1", start: "#2e1c24", m1: "#663546", m2: "#aa6278", end: "#f7dce2" },
+      { name: "新規グラデーション 2", start: "#1e2b1c", m1: "#384f33", m2: "#6d915b", end: "#def0d5" },
+      { name: "新規グラデーション 3", start: "#14203b", m1: "#263f6d", m2: "#5780be", end: "#dbe5f7" },
+      { name: "新規グラデーション 4", start: "#331c12", m1: "#6c3a23", m2: "#bd6b44", end: "#fae0d4" },
+      { name: "新規グラデーション 5", start: "#2b2612", m1: "#5c5024", m2: "#b8a34b", end: "#fcf8dc" },
+      { name: "新規グラデーション 6", start: "#1f2226", m1: "#3c4349", m2: "#707d89", end: "#e6ecf0" },
+      { name: "肌色加工 ニュアンス", start: "#381c3b", m1: "#8c3249", m2: "#ea7e6a", end: "#fff0e8" },
+      { name: "夕暮れシネマ", start: "#12142e", m1: "#50284b", m2: "#ba5545", end: "#fed78d" }
+    ];
+
+    const defaultGradSets = rawDefaultPresets.map(p => ({
+      id: 'def_' + Math.random().toString(36).substr(2, 6),
+      name: p.name,
+      nodes: generate14NodeGradient(p.start, p.m1, p.m2, p.end)
+    }));
+
+    const PERMANENT_STORAGE_KEY = 'dotgrid_studio_gradients_saved_data';
+    const PREVIOUS_STORAGE_KEYS = [
+      'dotgrid_grad_presets_master_vFINAL',
+      'dotgrid_grad_presets_master_v4',
+      'dotgrid_grad_presets_master_v3',
+      'dotgrid_grad_presets_master_v2',
+      'dotgrid_grad_sets'
+    ];
+
+    let gradSets = [];
+    function loadStoredGradPresets() {
+      try {
+        const stored = localStorage.getItem(PERMANENT_STORAGE_KEY);
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            gradSets = parsed;
+            return;
+          }
+        }
+      } catch(e) {}
+
+      for (const k of PREVIOUS_STORAGE_KEYS) {
+        try {
+          const oldStr = localStorage.getItem(k);
+          if (oldStr) {
+            const parsed = JSON.parse(oldStr);
+            if (Array.isArray(parsed) && parsed.length > 0) {
+              gradSets = parsed;
+              saveStoredGradPresets();
+              return;
+            }
+          }
+        } catch(e) {}
+      }
+
+      gradSets = JSON.parse(JSON.stringify(defaultGradSets));
+      saveStoredGradPresets();
+    }
+
+    function saveStoredGradPresets() {
+      try {
+        localStorage.setItem(PERMANENT_STORAGE_KEY, JSON.stringify(gradSets));
+      } catch(e) {
+        console.error('localStorage保存エラー:', e);
+      }
+    }
+    loadStoredGradPresets();
+
+    let activeGradNodeIdx = 0;
+
+    function hexToRgb(hex) {
+      hex = hex.replace('#', '');
+      if (hex.length === 3) hex = hex.split('').map(x => x + x).join('');
+      const n = parseInt(hex, 16) || 0;
+      return { r: (n >> 16) & 255, g: (n >> 8) & 255, b: n & 255 };
+    }
+    function rgbToHex(r, g, b) {
+      return '#' + [r, g, b].map(x => {
+        const h = Math.max(0, Math.min(255, Math.round(x))).toString(16);
+        return h.length === 1 ? '0' + h : h;
+      }).join('');
+    }
+
+    function loadImageFromFile(file) {
+      return new Promise((resolve, reject) => {
+        if (!file) return reject(new Error('ファイルがありません'));
+        const url = URL.createObjectURL(file);
+        const img = new Image();
+        img.onload = () => { URL.revokeObjectURL(url); resolve(img); };
+        img.onerror = (err) => { URL.revokeObjectURL(url); reject(err); };
+        img.src = url;
+      });
+    }
+
+    function updateStageTransform() {
+      const stage = $('canvasStage');
+      const totalStageW = baseW + STAGE_PAD * 2;
+      const totalStageH = baseH + STAGE_PAD * 2;
+
+      stage.style.width = totalStageW + 'px';
+      stage.style.height = totalStageH + 'px';
+      stage.style.transformOrigin = `${totalStageW / 2}px ${totalStageH / 2}px`;
+      stage.style.transform = `translate(${panX}px, ${panY}px) scale(${zoom}) ${isFlipH ? 'scaleX(-1)' : ''}`;
+      updateNavigatorUI();
+    }
+
+    function setZoom(newZoom) {
+      const preview = $('previewArea');
+      const pw = preview.clientWidth, ph = preview.clientHeight;
+      const px = pw / 2, py = ph / 2;
+
+      const oldZoom = zoom;
+      zoom = Math.max(0.05, Math.min(3.0, newZoom));
+
+      panX = px - (px - panX) * (zoom / oldZoom);
+      panY = py - (py - panY) * (zoom / oldZoom);
+
+      updateStageTransform();
+    }
+
+    function fitToScreen() {
+      const preview = $('previewArea');
+      const pw = preview.clientWidth, ph = preview.clientHeight;
+      if (pw === 0 || ph === 0) return;
+
+      const availW = pw - 60, availH = ph - 60;
+      zoom = Math.max(0.05, Math.min(availW / baseW, availH / baseH, 1.0));
+
+      const totalStageW = baseW + STAGE_PAD * 2;
+      const totalStageH = baseH + STAGE_PAD * 2;
+      panX = (pw - totalStageW) / 2;
+      panY = (ph - totalStageH) / 2;
+
+      updateStageTransform();
+    }
+
+    function toggleFlipH() {
+      isFlipH = !isFlipH;
+      $('bFlipH').classList.toggle('active', isFlipH);
+      updateStageTransform();
+    }
+
+    $('bFlipH').onclick = (e) => { e.stopPropagation(); toggleFlipH(); };
+    $('bZoomFit').onclick = (e) => { e.stopPropagation(); fitToScreen(); };
+
+    window.addEventListener('keydown', e => {
+      if (['input', 'select', 'textarea'].includes(document.activeElement?.tagName.toLowerCase())) return;
+      if (e.key.toLowerCase() === 'a') {
+        e.preventDefault();
+        toggleFlipH();
+      }
+    });
+
+    $('navWindow').addEventListener('pointerdown', e => e.stopPropagation());
+
+    function updateNavigatorUI() {
+      const pct = Math.round(zoom * 100);
+      $('navZoomVal').value = pct + '%';
+      $('navZoomSlider').value = pct;
+
+      const navCanvas = $('navCanvas');
+      const box = $('navBox');
+      const boxW = box.clientWidth || 200, boxH = box.clientHeight || 105;
+
+      const aspect = baseW / baseH;
+      let nw, nh;
+      if (aspect >= boxW / boxH) {
+        nw = boxW - 10; nh = nw / aspect;
+      } else {
+        nh = boxH - 10; nw = nh * aspect;
+      }
+      navCanvas.width = nw; navCanvas.height = nh;
+      navCanvas.style.width = nw + 'px'; navCanvas.style.height = nh + 'px';
+
+      const nctx = navCanvas.getContext('2d');
+      nctx.clearRect(0, 0, nw, nh);
+
+      if (isFlipH) {
+        nctx.save(); nctx.translate(nw, 0); nctx.scale(-1, 1);
+      }
+
+      nctx.fillStyle = '#ffffff';
+      nctx.fillRect(0, 0, nw, nh);
+
+      const firstImgL = layers.find(l => l.type === 'image');
+      if (firstImgL && imageStore.has(firstImgL.imgStoreId)) {
+        nctx.drawImage(imageStore.get(firstImgL.imgStoreId), 0, 0, nw, nh);
+      }
+
+      if (isFlipH) nctx.restore();
+
+      const preview = $('previewArea');
+      const pw = preview.clientWidth, ph = preview.clientHeight;
+
+      const totalStageW = baseW + STAGE_PAD * 2;
+      const totalStageH = baseH + STAGE_PAD * 2;
+      const centerScreenX = panX + totalStageW / 2;
+      const centerScreenY = panY + totalStageH / 2;
+
+      const canvasScreenX = centerScreenX - (baseW / 2) * zoom;
+      const canvasScreenY = centerScreenY - (baseH / 2) * zoom;
+      const canvasScreenW = baseW * zoom;
+      const canvasScreenH = baseH * zoom;
+
+      const scaleRatioX = nw / canvasScreenW;
+      const scaleRatioY = nh / canvasScreenH;
+
+      let rx = -canvasScreenX * scaleRatioX;
+      const ry = -canvasScreenY * scaleRatioY;
+      const rw = pw * scaleRatioX;
+      const rh = ph * scaleRatioY;
+
+      if (isFlipH) rx = nw - (rx + rw);
+
+      const boxOffX = (boxW - nw) / 2;
+      const boxOffY = (boxH - nh) / 2;
+
+      const vp = $('navViewport');
+      vp.style.left = (boxOffX + rx) + 'px';
+      vp.style.top = (boxOffY + ry) + 'px';
+      vp.style.width = Math.max(10, rw) + 'px';
+      vp.style.height = Math.max(10, rh) + 'px';
+    }
+
+    $('navZoomSlider').oninput = function() { setZoom(parseInt(this.value) / 100); };
+    $('navZoomVal').onchange = function() {
+      const val = parseInt(this.value);
+      if (val > 0) setZoom(val / 100);
+    };
+
+    let isNavDragging = false;
+    $('navViewport').addEventListener('pointerdown', e => {
+      isNavDragging = true;
+      e.target.setPointerCapture(e.pointerId);
+      e.stopPropagation();
+    });
+    window.addEventListener('pointermove', e => {
+      if (!isNavDragging) return;
+      const box = $('navBox');
+      const boxRect = box.getBoundingClientRect();
+      const nw = $('navCanvas').width;
+      const nh = $('navCanvas').height;
+
+      let clickX = e.clientX - (boxRect.left + (box.clientWidth - nw) / 2);
+      const clickY = e.clientY - (boxRect.top + (box.clientHeight - nh) / 2);
+      if (isFlipH) clickX = nw - clickX;
+
+      const preview = $('previewArea');
+      const totalStageW = baseW + STAGE_PAD * 2;
+      const totalStageH = baseH + STAGE_PAD * 2;
+
+      const targetCanvasCenterX = (clickX / nw) * baseW;
+      const targetCanvasCenterY = (clickY / nh) * baseH;
+
+      panX = (preview.clientWidth / 2) - ((targetCanvasCenterX + STAGE_PAD - totalStageW/2) * zoom + totalStageW/2);
+      panY = (preview.clientHeight / 2) - ((targetCanvasCenterY + STAGE_PAD - totalStageH/2) * zoom + totalStageH/2);
+      updateStageTransform();
+    });
+    window.addEventListener('pointerup', () => { isNavDragging = false; });
+
+    let isWinDragging = false, winOffX = 0, winOffY = 0;
+    $('navHeader').addEventListener('pointerdown', e => {
+      if (e.target.tagName.toLowerCase() === 'button') return;
+      isWinDragging = true;
+      const win = $('navWindow');
+      winOffX = e.clientX - win.offsetLeft;
+      winOffY = e.clientY - win.offsetTop;
+      win.setPointerCapture(e.pointerId);
+    });
+    window.addEventListener('pointermove', e => {
+      if (!isWinDragging) return;
+      const win = $('navWindow');
+      win.style.left = Math.max(0, e.clientX - winOffX) + 'px';
+      win.style.top = Math.max(0, e.clientY - winOffY) + 'px';
+    });
+    window.addEventListener('pointerup', () => { isWinDragging = false; });
+
+    $('bCloseNav').onclick = () => { $('navWindow').style.display = 'none'; };
+    $('bToggleNav').onclick = () => {
+      const win = $('navWindow');
+      win.style.display = (win.style.display === 'none') ? 'flex' : 'none';
+      if (win.style.display !== 'none') updateNavigatorUI();
+    };
+    $('bMinNav').onclick = () => {
+      const body = $('navBody');
+      body.style.display = (body.style.display === 'none') ? 'flex' : 'none';
+    };
+
+    // --- 履歴管理 ---
+    const stack = [];
+    let sIdx = -1, isRestoring = false;
+
+    function pushState() {
+      if (isRestoring) return;
+      if (sIdx < stack.length - 1) stack.splice(sIdx + 1);
+
+      const serializedLayers = layers.map(l => {
+        const copy = { ...l };
+        if (copy.thumbUrl) delete copy.thumbUrl;
+        return copy;
+      });
+
+      stack.push(JSON.stringify({
+        layers: serializedLayers,
+        activeLayerId, baseW, baseH,
+        grain: $('grain').value
+      }));
+
+      if (stack.length > 30) stack.shift();
+      sIdx = stack.length - 1;
+      updateHistoryButtons();
+    }
+
+    function restoreState(idx) {
+      if (idx < 0 || idx >= stack.length) return;
+      isRestoring = true;
+      sIdx = idx;
+      const s = JSON.parse(stack[sIdx]);
+
+      layers = s.layers;
+      activeLayerId = s.activeLayerId;
+      baseW = s.baseW;
+      baseH = s.baseH;
+
+      $('grain').value = s.grain;
+      layers.forEach(l => generateThumbnail(l));
+
+      renderLayerStack();
+      syncActiveProps();
+      render();
+      updateHistoryButtons();
+      updateNavigatorUI();
+      isRestoring = false;
+    }
+
+    function updateHistoryButtons() {
+      $('bUndo').disabled = sIdx <= 0;
+      $('bRedo').disabled = sIdx >= stack.length - 1;
+    }
+    $('bUndo').onclick = () => restoreState(sIdx - 1);
+    $('bRedo').onclick = () => restoreState(sIdx + 1);
+
+    window.addEventListener('keydown', e => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
+        e.preventDefault();
+        if (e.shiftKey) restoreState(sIdx + 1);
+        else restoreState(sIdx - 1);
+      } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'y') {
+        e.preventDefault();
+        restoreState(sIdx + 1);
+      }
+    });
+
+    function getActiveLayer() {
+      return layers.find(l => l.id === activeLayerId) || null;
+    }
+
+    function generateThumbnail(l) {
+      if (l.type === 'image') {
+        const imgC = imageStore.get(l.imgStoreId);
+        if (imgC) {
+          const tc = document.createElement('canvas');
+          tc.width = 26; tc.height = 26;
+          tc.getContext('2d').drawImage(imgC, 0, 0, 26, 26);
+          l.thumbUrl = tc.toDataURL();
+        }
+      }
+    }
+
+    // --- レイヤー作成 ---
+    function addImageLayer(img, origW, origH) {
+      layerCounter++;
+      const isFirst = layers.length === 0;
+
+      if (isFirst) {
+        baseW = origW;
+        baseH = origH;
+      }
+
+      let targetW = origW, targetH = origH;
+      const MAX_SIDE = 2500;
+      if (Math.max(origW, origH) > MAX_SIDE) {
+        if (origW >= origH) {
+          targetW = MAX_SIDE; targetH = Math.round(origH * (MAX_SIDE / origW));
+        } else {
+          targetH = MAX_SIDE; targetW = Math.round(origW * (MAX_SIDE / origH));
+        }
+      }
+
+      const imgC = document.createElement('canvas');
+      imgC.width = targetW; imgC.height = targetH;
+      imgC.getContext('2d').drawImage(img, 0, 0, targetW, targetH);
+
+      const storeId = 'img_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5);
+      imageStore.set(storeId, imgC);
+
+      const newImgLayer = {
+        id: layerCounter,
+        type: 'image',
+        name: `写真 ${layers.filter(l => l.type === 'image').length + 1}`,
+        visible: true,
+        locked: isFirst,
+        opacity: 100,
+        blend: 'source-over',
+        clip: false,
+        frameShape: 'rect',
+        vertex: 5,
+        x: isFirst ? 0 : Math.round((baseW - origW) / 2),
+        y: isFirst ? 0 : Math.round((baseH - origH) / 2),
+        w: origW,
+        h: origH,
+        imgStoreId: storeId,
+        origW, origH
+      };
+
+      generateThumbnail(newImgLayer);
+
+      const lastImgIdx = layers.findLastIndex(l => l.type === 'image');
+      if (lastImgIdx === -1) layers.unshift(newImgLayer);
+      else layers.splice(lastImgIdx + 1, 0, newImgLayer);
+
+      activeLayerId = newImgLayer.id;
+      renderLayerStack();
+      syncActiveProps();
+      pushState();
+      render();
+
+      if (isFirst) fitToScreen();
+      else updateNavigatorUI();
+    }
+
+    $('bAddTone').onclick = () => {
+      layerCounter++;
+      const initW = 500, initH = 500;
+      const newTone = {
+        id: layerCounter,
+        type: 'tone',
+        name: `トーン ${layers.filter(l => l.type === 'tone').length + 1}`,
+        visible: true,
+        locked: false,
+        opacity: 100,
+        blend: 'source-over',
+        clip: false,
+        frameShape: 'rect',
+        vertex: 5,
+        x: Math.round((baseW - initW) / 2),
+        y: Math.round((baseH - initH) / 2),
+        w: initW,
+        h: initH,
+        angle: 45,
+        dotShape: 'square',
+        pat: 'stagger',
+        mode: 'color-halftone',
+        handJitter: 45,
+        randomSeed: Math.floor(Math.random() * 100000),
+        size: 40,
+        gap: 2,
+        color: '#4A4A4A',
+        misprint: 0
+      };
+
+      layers.push(newTone);
+      activeLayerId = newTone.id;
+      renderLayerStack();
+      syncActiveProps();
+      pushState();
+      render();
+      updateNavigatorUI();
+    };
+
+    function addGradientLayer(presetName, nodes, blend = 'color', opacity = 100) {
+      layerCounter++;
+      const initialNodes = nodes ? JSON.parse(JSON.stringify(nodes)) : JSON.parse(JSON.stringify(gradSets[0].nodes));
+      const newGrad = {
+        id: layerCounter,
+        type: 'gradmap',
+        name: `グラデーション ${layers.filter(l => l.type === 'gradmap').length + 1}`,
+        visible: true,
+        locked: true,
+        opacity: opacity !== undefined ? opacity : 100,
+        blend: blend || 'color',
+        clip: false,
+        frameShape: 'rect',
+        vertex: 5,
+        x: 0, y: 0, w: baseW, h: baseH,
+        presetName: presetName || gradSets[0].name,
+        nodes: initialNodes
+      };
+
+      layers.push(newGrad);
+      activeLayerId = newGrad.id;
+      activeGradNodeIdx = 0;
+      renderLayerStack();
+      syncActiveProps();
+      pushState();
+      render();
+      updateNavigatorUI();
+      return newGrad;
+    }
+
+    $('bAddGrad').onclick = () => addGradientLayer();
+
+    $('bDelLayer').onclick = () => {
+      const cur = getActiveLayer();
+      if (!cur) return;
+      if (cur.type === 'image' && cur.imgStoreId) imageStore.delete(cur.imgStoreId);
+      layers = layers.filter(l => l.id !== cur.id);
+      activeLayerId = layers.length > 0 ? layers[layers.length - 1].id : null;
+      renderLayerStack();
+      syncActiveProps();
+      pushState();
+      render();
+      updateNavigatorUI();
+    };
+
+    function moveLayer(id, delta) {
+      const idx = layers.findIndex(l => l.id === id);
+      if (idx === -1) return;
+      const targetIdx = idx + delta;
+      if (targetIdx < 0 || targetIdx >= layers.length) return;
+
+      const item = layers.splice(idx, 1)[0];
+      layers.splice(targetIdx, 0, item);
+      renderLayerStack();
+      pushState();
+      render();
+      updateNavigatorUI();
+    }
+
+    function renderLayerStack() {
+      const stackEl = $('layerStack');
+      stackEl.innerHTML = '';
+      if (layers.length === 0) {
+        stackEl.innerHTML = '<div style="padding:16px; font-size:11px; text-align:center; color:#888;">レイヤーがありません。<br>上のボタンから追加してください。</div>';
+        return;
+      }
+
+      for (let i = layers.length - 1; i >= 0; i--) {
+        const l = layers[i];
+        const row = document.createElement('div');
+        row.className = `layer-row ${l.id === activeLayerId ? 'active' : ''} ${l.clip ? 'clipped' : ''}`;
+        
+        let thumbHtml = '';
+        if (l.type === 'image' && l.thumbUrl) {
+          thumbHtml = `<img src="${l.thumbUrl}">`;
+        } else if (l.type === 'gradmap' && l.nodes) {
+          const bgStr = getGradientCSS(l.nodes);
+          thumbHtml = `<div style="width:100%;height:100%;background:${bgStr};"></div>`;
+        } else if (l.type === 'tone') {
+          thumbHtml = `<div style="font-size:13px;">⚪</div>`;
+        } else {
+          thumbHtml = `<div style="font-size:13px;">🎨</div>`;
+        }
+
+        row.innerHTML = `
+          <div class="layer-clip-indicator" title="クリッピング中"></div>
+          <div class="layer-thumb">${thumbHtml}</div>
+          <span class="layer-name">${l.name}</span>
+          <span class="layer-meta">${l.opacity}%</span>
+          <div class="layer-row-btns">
+            <button type="button" class="layer-btn-icon ${l.clip ? 'active' : ''}" data-act="clip" title="クリッピング">${l.clip ? '📎' : '─'}</button>
+            <button type="button" class="layer-btn-icon" data-act="lock" title="ロック">${l.locked ? '🔒' : '🔓'}</button>
+            <button type="button" class="layer-btn-icon" data-act="vis" title="表示/非表示">${l.visible ? '👁️' : '─'}</button>
+            <button type="button" class="layer-btn-icon" data-act="up" title="上へ">▲</button>
+            <button type="button" class="layer-btn-icon" data-act="down" title="下へ">▼</button>
+          </div>
+        `;
+
+        row.onclick = (e) => {
+          const btn = e.target.closest('[data-act]');
+          if (btn) {
+            e.stopPropagation();
+            const act = btn.getAttribute('data-act');
+            if (act === 'clip') { l.clip = !l.clip; syncActiveProps(); render(); }
+            else if (act === 'lock') { l.locked = !l.locked; syncActiveProps(); render(); }
+            else if (act === 'vis') { l.visible = !l.visible; render(); }
+            else if (act === 'up') { moveLayer(l.id, 1); return; }
+            else if (act === 'down') { moveLayer(l.id, -1); return; }
+            renderLayerStack();
+            pushState();
+            updateNavigatorUI();
+            return;
+          }
+          activeLayerId = l.id;
+          renderLayerStack();
+          syncActiveProps();
+          render();
+        };
+
+        stackEl.appendChild(row);
+      }
+    }
+
+    function getGradientCSS(nodes, isReverse = false) {
+      const sorted = [...nodes].sort((a,b) => a.pos - b.pos);
+      const parts = sorted.map(n => {
+        const p = isReverse ? (1 - n.pos) : n.pos;
+        return `${n.color} ${Math.round(p * 100)}%`;
+      });
+      if (isReverse) parts.reverse();
+      return `linear-gradient(to right, ${parts.join(', ')})`;
+    }
+
+    function syncActiveProps() {
+      const cur = getActiveLayer();
+      $('layerCommonProps').style.display = cur ? 'flex' : 'none';
+      $('frameProps').style.display = cur ? 'flex' : 'none';
+      $('toneProps').style.display = (cur && cur.type === 'tone') ? 'flex' : 'none';
+      $('gradProps').style.display = (cur && cur.type === 'gradmap') ? 'flex' : 'none';
+      $('imgProps').style.display = (cur && cur.type === 'image') ? 'flex' : 'none';
+
+      if (!cur) return;
+
+      $('pBlend').value = cur.blend || 'source-over';
+      $('pOpacity').value = cur.opacity !== undefined ? cur.opacity : 100;
+      $('vOpacity').textContent = `${$('pOpacity').value}%`;
+
+      $('tFrameShape').value = cur.frameShape || 'rect';
+      $('tVertex').value = cur.vertex || 5; $('vVertex').textContent = cur.vertex || 5;
+      $('tW').value = cur.w; $('vTW').textContent = cur.w;
+      $('tH').value = cur.h; $('vTH').textContent = cur.h;
+      $('tX').value = cur.x !== undefined ? cur.x : 0;
+      $('tY').value = cur.y !== undefined ? cur.y : 0;
+
+      if (cur.type === 'tone') {
+        $('tDotShape').value = cur.dotShape || 'square';
+        $('tPat').value = cur.pat || 'stagger';
+        $('tMode').value = cur.mode || 'color-halftone';
+        $('tColor').value = cur.color || '#4A4A4A';
+        $('tAng').value = cur.angle; $('vAng').textContent = `${cur.angle}°`;
+        $('tSize').value = cur.size; $('vS').textContent = cur.size;
+        $('tGap').value = cur.gap; $('vG').textContent = cur.gap;
+        $('tMisprint').value = cur.misprint || 0; $('vMisp').textContent = `${cur.misprint || 0}px`;
+        $('tHandJitter').value = cur.handJitter !== undefined ? cur.handJitter : 45;
+        $('vHandJitter').textContent = `${$('tHandJitter').value}%`;
+        $('handJitterWrap').style.display = (cur.dotShape === 'hand') ? 'flex' : 'none';
+
+        const isSingleColor = (cur.mode === 'normal' || cur.mode === 'halftone');
+        $('toneColorSection').style.display = isSingleColor ? 'flex' : 'none';
+
+        document.querySelectorAll('.ink-chip').forEach(c => c.classList.toggle('active', c.getAttribute('data-c') === cur.color));
+      }
+
+      if (cur.type === 'gradmap') {
+        syncGradEditorUI();
+      }
+
+      if (cur.type === 'image') {
+        $('imgInfoText').textContent = `${cur.name} (${cur.origW} × ${cur.origH} px) ${cur.locked ? '🔒固定中' : ''}`;
+      }
+
+      $('vGrain').textContent = `${$('grain').value}%`;
+    }
+
+    function syncGradEditorUI() {
+      const cur = getActiveLayer();
+      if (!cur || cur.type !== 'gradmap' || !cur.nodes) return;
+
+      const gradCSS = getGradientCSS(cur.nodes);
+      $('gradBar').style.background = gradCSS;
+      $('eyeGradBar').style.background = gradCSS;
+
+      renderPinsIntoContainer($('gradPinContainer'), cur.nodes, false);
+      renderPinsIntoContainer($('eyeGradPinContainer'), cur.nodes, true);
+
+      if (activeGradNodeIdx >= cur.nodes.length) activeGradNodeIdx = cur.nodes.length - 1;
+      const activeNode = cur.nodes[activeGradNodeIdx] || cur.nodes[0];
+      if (activeNode) {
+        $('gradNodePos').value = Math.round(activeNode.pos * 100);
+        $('gradNodeColor').value = activeNode.color;
+        $('eyeGradNodePos').value = Math.round(activeNode.pos * 100);
+        $('eyeGradNodeColor').value = activeNode.color;
+        
+        const pinIdxText = `(ピン ${activeGradNodeIdx + 1}/${cur.nodes.length})`;
+        $('vGradNodeIndex').textContent = pinIdxText;
+        $('vEyeGradNodeIndex').textContent = pinIdxText;
+      }
+
+      renderGradPresetList();
+    }
+
+    function renderPinsIntoContainer(container, nodes, isEyeModal) {
+      container.innerHTML = '';
+      nodes.forEach((node, idx) => {
+        const pin = document.createElement('div');
+        pin.className = `grad-pin ${idx === activeGradNodeIdx ? 'active' : ''}`;
+        pin.style.left = `${node.pos * 100}%`;
+        pin.innerHTML = `<div class="grad-pin-arrow"></div><div class="grad-pin-color" style="background:${node.color};"></div>`;
+
+        pin.onpointerdown = (e) => {
+          e.stopPropagation();
+          activeGradNodeIdx = idx;
+          syncGradEditorUI();
+
+          const barEl = isEyeModal ? $('eyeGradBar') : $('gradBar');
+          const barRect = barEl.getBoundingClientRect();
+
+          const onMove = (me) => {
+            let p = (me.clientX - barRect.left) / barRect.width;
+            p = Math.max(0, Math.min(1, p));
+            node.pos = Math.round(p * 100) / 100;
+            syncGradEditorUI();
+            render();
+          };
+          const onUp = () => {
+            window.removeEventListener('pointermove', onMove);
+            window.removeEventListener('pointerup', onUp);
+            pushState();
+          };
+          window.addEventListener('pointermove', onMove);
+          window.addEventListener('pointerup', onUp);
+        };
+
+        container.appendChild(pin);
+      });
+    }
+
+    function renderGradPresetList() {
+      const listEl = $('gradPresetList');
+      listEl.innerHTML = '';
+      const cur = getActiveLayer();
+
+      gradSets.forEach((set, idx) => {
+        const row = document.createElement('div');
+        row.className = `grad-preset-row ${(cur && cur.presetName === set.name) ? 'active' : ''}`;
+        
+        row.innerHTML = `
+          <div class="grad-preset-info" title="${set.name}">
+            <div class="grad-preset-preview" style="background:${getGradientCSS(set.nodes)}"></div>
+            <span class="grad-preset-name">${set.name}</span>
+          </div>
+          <div class="grad-preset-btns">
+            <button type="button" class="preset-icon-btn" data-act="grd" title="クリスタ用.grd保存">💾</button>
+            <button type="button" class="preset-icon-btn" data-act="up" title="上へ">▲</button>
+            <button type="button" class="preset-icon-btn" data-act="down" title="下へ">▼</button>
+            <button type="button" class="preset-icon-btn" data-act="del" title="削除" style="color:#f87171;">✕</button>
+          </div>
+        `;
+
+        row.onclick = (e) => {
+          const btn = e.target.closest('[data-act]');
+          if (btn) {
+            e.stopPropagation();
+            const act = btn.getAttribute('data-act');
+            if (act === 'grd') {
+              exportGRDFiles([set], `${set.name}.grd`);
+            } else if (act === 'up' && idx > 0) {
+              const temp = gradSets[idx]; gradSets[idx] = gradSets[idx - 1]; gradSets[idx - 1] = temp;
+              saveStoredGradPresets(); renderGradPresetList();
+            } else if (act === 'down' && idx < gradSets.length - 1) {
+              const temp = gradSets[idx]; gradSets[idx] = gradSets[idx + 1]; gradSets[idx + 1] = temp;
+              saveStoredGradPresets(); renderGradPresetList();
+            } else if (act === 'del') {
+              if (confirm(`プリセット「${set.name}」を削除しますか？`)) {
+                gradSets.splice(idx, 1);
+                saveStoredGradPresets(); renderGradPresetList();
+              }
+            }
+            return;
+          }
+          if (cur && cur.type === 'gradmap') {
+            cur.presetName = set.name;
+            cur.nodes = JSON.parse(JSON.stringify(set.nodes));
+            activeGradNodeIdx = 0;
+            syncGradEditorUI();
+            pushState();
+            render();
+          }
+        };
+        listEl.appendChild(row);
+      });
+    }
+
+    $('bExportPresetJson').onclick = () => {
+      const jsonStr = JSON.stringify(gradSets, null, 2);
+      const blob = new Blob([jsonStr], { type: 'application/json' });
+      saveBinaryFile(blob, 'DotGrid_Gradients_Backup.json', 'application/json');
+    };
+
+    $('bImportPresetJson').onclick = () => $('presetImportInput').click();
+    $('presetImportInput').onchange = function() {
+      if (!this.files || !this.files[0]) return;
+      const r = new FileReader();
+      r.onload = e => {
+        try {
+          const imported = JSON.parse(e.target.result);
+          if (Array.isArray(imported) && imported.length > 0) {
+            gradSets = imported;
+            saveStoredGradPresets();
+            renderGradPresetList();
+            alert('グラデーションセットをバックアップから復元しました！');
+          } else {
+            alert('無効なパレットデータです。');
+          }
+        } catch(err) {
+          alert('復元エラー: ' + err.message);
+        }
+      };
+      r.readAsText(this.files[0]);
+      this.value = '';
+    };
+
+    $('bResetGradPresets').onclick = () => {
+      if (confirm('プリセットを初期状態にリセットしますか？')) {
+        gradSets = JSON.parse(JSON.stringify(defaultGradSets));
+        saveStoredGradPresets();
+        renderGradPresetList();
+      }
+    };
+
+    function addPinAtPos(p) {
+      const cur = getActiveLayer();
+      if (!cur || cur.type !== 'gradmap') return;
+      const newColor = sampleGradientColor(cur.nodes, p);
+      cur.nodes.push({ pos: p, color: newColor });
+      cur.nodes.sort((a,b) => a.pos - b.pos);
+      activeGradNodeIdx = cur.nodes.findIndex(n => n.pos === p);
+      cur.presetName = 'カスタム';
+      syncGradEditorUI();
+      pushState();
+      render();
+    }
+
+    function deleteActivePin() {
+      const cur = getActiveLayer();
+      if (!cur || cur.type !== 'gradmap' || cur.nodes.length <= 2) {
+        alert('ピンは最低2本必要です。');
+        return;
+      }
+      cur.nodes.splice(activeGradNodeIdx, 1);
+      activeGradNodeIdx = Math.max(0, activeGradNodeIdx - 1);
+      cur.presetName = 'カスタム';
+      syncGradEditorUI();
+      pushState();
+      render();
+    }
+
+    $('gradBarWrap').onclick = (e) => {
+      if (e.target.closest('.grad-pin')) return;
+      const barRect = $('gradBar').getBoundingClientRect();
+      let p = (e.clientX - barRect.left) / barRect.width;
+      addPinAtPos(Math.max(0, Math.min(1, Math.round(p * 100) / 100)));
+    };
+    $('eyeGradBarWrap').onclick = (e) => {
+      if (e.target.closest('.grad-pin')) return;
+      const barRect = $('eyeGradBar').getBoundingClientRect();
+      let p = (e.clientX - barRect.left) / barRect.width;
+      addPinAtPos(Math.max(0, Math.min(1, Math.round(p * 100) / 100)));
+    };
+
+    $('bDelGradNode').onclick = deleteActivePin;
+    $('bEyeDelPin').onclick = deleteActivePin;
+    $('bEyeAddPin').onclick = () => addPinAtPos(0.5);
+
+    function onPinPosChange(val) {
+      const cur = getActiveLayer();
+      if (!cur || !cur.nodes || !cur.nodes[activeGradNodeIdx]) return;
+      cur.nodes[activeGradNodeIdx].pos = Math.max(0, Math.min(1, parseInt(val) / 100));
+      cur.presetName = 'カスタム';
+      syncGradEditorUI();
+      pushState();
+      render();
+    }
+    $('gradNodePos').onchange = function() { onPinPosChange(this.value); };
+    $('eyeGradNodePos').onchange = function() { onPinPosChange(this.value); };
+
+    function onPinColorInput(val) {
+      const cur = getActiveLayer();
+      if (!cur || !cur.nodes || !cur.nodes[activeGradNodeIdx]) return;
+      cur.nodes[activeGradNodeIdx].color = val;
+      cur.presetName = 'カスタム';
+      $('gradBar').style.background = getGradientCSS(cur.nodes);
+      $('eyeGradBar').style.background = getGradientCSS(cur.nodes);
+      render();
+    }
+    $('gradNodeColor').oninput = function() { onPinColorInput(this.value); };
+    $('gradNodeColor').onchange = () => { pushState(); syncGradEditorUI(); };
+    $('eyeGradNodeColor').oninput = function() { onPinColorInput(this.value); };
+    $('eyeGradNodeColor').onchange = () => { pushState(); syncGradEditorUI(); };
+
+    function invertGradient() {
+      const cur = getActiveLayer();
+      if (!cur || !cur.nodes) return;
+      cur.nodes.forEach(n => n.pos = Math.round((1 - n.pos) * 100) / 100);
+      cur.nodes.reverse();
+      cur.presetName = 'カスタム';
+      syncGradEditorUI();
+      pushState();
+      render();
+    }
+    $('bInvertGrad').onclick = invertGradient;
+    $('bEyeInvert').onclick = invertGradient;
+
+    $('bAddGradPreset').onclick = () => {
+      const cur = getActiveLayer();
+      if (!cur || !cur.nodes) return;
+      const name = prompt('保存するグラデーション名を入力:', `マイグラデ ${gradSets.length + 1}`);
+      if (!name) return;
+      gradSets.push({ id: 'u_' + Date.now(), name, nodes: JSON.parse(JSON.stringify(cur.nodes)) });
+      saveStoredGradPresets();
+      cur.presetName = name;
+      renderGradPresetList();
+      alert(`「${name}」を永続保存しました！ブラウザを閉じても消えません。`);
+    };
+
+    $('bExportCurrentGrd').onclick = () => {
+      const cur = getActiveLayer();
+      if (!cur || !cur.nodes) { alert('グラデーションレイヤーを選択してください。'); return; }
+      exportGRDFiles([{ name: cur.presetName || 'カスタムグラデーション', nodes: cur.nodes }], `${cur.presetName || 'gradient'}.grd`);
+    };
+
+    function sampleGradientColor(nodes, t) {
+      const sorted = [...nodes].sort((a,b) => a.pos - b.pos);
+      if (t <= sorted[0].pos) return sorted[0].color;
+      if (t >= sorted[sorted.length - 1].pos) return sorted[sorted.length - 1].color;
+      for (let i = 0; i < sorted.length - 1; i++) {
+        if (t >= sorted[i].pos && t <= sorted[i+1].pos) {
+          const ratio = (t - sorted[i].pos) / (sorted[i+1].pos - sorted[i].pos);
+          const c1 = hexToRgb(sorted[i].color), c2 = hexToRgb(sorted[i+1].color);
+          return rgbToHex(c1.r + (c2.r - c1.r)*ratio, c1.g + (c2.g - c1.g)*ratio, c1.b + (c2.b - c1.b)*ratio);
+        }
+      }
+      return '#888888';
+    }
+
+    // =========================================================
+    // ■ 写真からグラデ自動生成 & プレビュー機能
+    // =========================================================
+    let currentPhotoForGrad = null;
+    let currentTestPreviewImg = null;
+    let generatedGradResults = [];
+    let selectedPreviewGradIdx = 0;
+
+    $('bOpenPhotoGradModal').onclick = () => openPhotoGradModal();
+    $('bGenGradFromImgLayer').onclick = () => {
+      const cur = getActiveLayer();
+      if (cur && cur.type === 'image' && imageStore.has(cur.imgStoreId)) {
+        currentPhotoForGrad = imageStore.get(cur.imgStoreId);
+        openPhotoGradModal(currentPhotoForGrad);
+      }
+    };
+    $('bClosePhotoGrad').onclick = () => { $('photoGradModal').style.display = 'none'; };
+
+    $('bSelectPhotoGradFile').onclick = () => $('photoGradFileInput').click();
+    $('photoGradFileInput').onchange = async function() {
+      if (!this.files || !this.files[0]) return;
+      try {
+        const im = await loadImageFromFile(this.files[0]);
+        currentPhotoForGrad = im;
+        currentTestPreviewImg = im;
+        analyzePhotoAndGenerateGradients(im);
+      } catch(err) {
+        alert('画像の読み込みに失敗しました: ' + err.message);
+      }
+      this.value = '';
+    };
+
+    $('bUseCanvasPhoto').onclick = () => {
+      const firstImgL = layers.find(l => l.type === 'image');
+      if (firstImgL && imageStore.has(firstImgL.imgStoreId)) {
+        currentPhotoForGrad = imageStore.get(firstImgL.imgStoreId);
+        currentTestPreviewImg = currentPhotoForGrad;
+        analyzePhotoAndGenerateGradients(currentPhotoForGrad);
+      } else {
+        alert('作業キャンバスに写真レイヤーがありません。');
+      }
+    };
+
+    $('bLoadTestPhoto').onclick = () => $('testPreviewFileInput').click();
+    $('testPreviewFileInput').onchange = async function() {
+      if (!this.files || !this.files[0]) return;
+      try {
+        currentTestPreviewImg = await loadImageFromFile(this.files[0]);
+        renderLivePreviewCanvas();
+      } catch(e) {
+        alert('プレビュー画像の読込に失敗しました');
+      }
+      this.value = '';
+    };
+
+    const dropZone = $('testPreviewDropZone');
+    dropZone.onclick = () => $('testPreviewFileInput').click();
+    dropZone.ondragover = e => { e.preventDefault(); dropZone.classList.add('dragover'); };
+    dropZone.ondragleave = () => dropZone.classList.remove('dragover');
+    dropZone.ondrop = async e => {
+      e.preventDefault();
+      dropZone.classList.remove('dragover');
+      if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+        try {
+          currentTestPreviewImg = await loadImageFromFile(e.dataTransfer.files[0]);
+          renderLivePreviewCanvas();
+        } catch(err) {
+          alert('プレビュー画像の読込に失敗しました');
+        }
+      }
+    };
+
+    $('bResetTestPhoto').onclick = () => {
+      if (currentPhotoForGrad) {
+        currentTestPreviewImg = currentPhotoForGrad;
+        renderLivePreviewCanvas();
+      }
+    };
+
+    $('pShadowLift').oninput = function() {
+      $('vShadowLift').textContent = this.value;
+      if (currentPhotoForGrad) {
+        analyzePhotoAndGenerateGradients(currentPhotoForGrad);
+      }
+    };
+
+    $('prevBlendMode').onchange = () => renderLivePreviewCanvas();
+    $('prevOpacity').oninput = function() {
+      $('vPrevOpacity').textContent = `${this.value}%`;
+      renderLivePreviewCanvas();
+    };
+
+    $('bExportAllGrdPack').onclick = () => {
+      if (!generatedGradResults || generatedGradResults.length === 0) {
+        alert('先に写真を読み込んでグラデーションを生成してください。');
+        return;
+      }
+      exportGRDFiles(generatedGradResults, 'Photo_Palette_Pack.grd');
+    };
+
+    function openPhotoGradModal(preloadedImg = null) {
+      $('photoGradModal').style.display = 'flex';
+      if (preloadedImg) {
+        currentPhotoForGrad = preloadedImg;
+        currentTestPreviewImg = preloadedImg;
+        analyzePhotoAndGenerateGradients(preloadedImg);
+      } else {
+        const firstImgL = layers.find(l => l.type === 'image');
+        if (firstImgL && imageStore.has(firstImgL.imgStoreId)) {
+          currentPhotoForGrad = imageStore.get(firstImgL.imgStoreId);
+          currentTestPreviewImg = currentPhotoForGrad;
+          analyzePhotoAndGenerateGradients(currentPhotoForGrad);
+        }
+      }
+    }
+
+    function rgbToHsl(r, g, b) {
+      r /= 255; g /= 255; b /= 255;
+      const max = Math.max(r, g, b), min = Math.min(r, g, b);
+      let h, s, l = (max + min) / 2;
+      if (max === min) {
+        h = s = 0;
+      } else {
+        const d = max - min;
+        s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+        switch (max) {
+          case r: h = (g - b) / d + (g < b ? 6 : 0); break;
+          case g: h = (b - r) / d + 2; break;
+          case b: h = (r - g) / d + 4; break;
+        }
+        h /= 6;
+      }
+      return [h * 360, s, l];
+    }
+
+    function hslToRgb(h, s, l) {
+      h = (h % 360 + 360) % 360 / 360;
+      let r, g, b;
+      if (s === 0) {
+        r = g = b = l;
+      } else {
+        const hue2rgb = (p, q, t) => {
+          if (t < 0) t += 1;
+          if (t > 1) t -= 1;
+          if (t < 1/6) return p + (q - p) * 6 * t;
+          if (t < 1/2) return q;
+          if (t < 2/3) return p + (q - p) * (2/3 - t) * 6;
+          return p;
+        };
+        const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+        const p = 2 * l - q;
+        r = hue2rgb(p, q, h + 1/3);
+        g = hue2rgb(p, q, h);
+        b = hue2rgb(p, q, h - 1/3);
+      }
+      return [Math.round(r * 255), Math.round(g * 255), Math.round(b * 255)];
+    }
+
+    function analyzePhotoAndGenerateGradients(imgSource) {
+      const sc = document.createElement('canvas');
+      const maxDim = 320;
+      let sw = imgSource.naturalWidth || imgSource.width || 320;
+      let sh = imgSource.naturalHeight || imgSource.height || 240;
+      if (sw > maxDim || sh > maxDim) {
+        if (sw >= sh) { sh = Math.round(sh * (maxDim / sw)); sw = maxDim; }
+        else { sw = Math.round(sw * (maxDim / sh)); sh = maxDim; }
+      }
+      sc.width = sw; sc.height = sh;
+      const sctx = sc.getContext('2d');
+      sctx.drawImage(imgSource, 0, 0, sw, sh);
+
+      const imgData = sctx.getImageData(0, 0, sw, sh).data;
+      const shadowLift = parseInt($('pShadowLift').value) || 30;
+
+      const bands = [[], [], [], [], []];
+      for (let i = 0; i < imgData.length; i += 16) {
+        const a = imgData[i+3];
+        if (a < 50) continue;
+        const r = imgData[i], g = imgData[i+1], b = imgData[i+2];
+        const [h, s, l] = rgbToHsl(r, g, b);
+        const lum = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+
+        let bIdx = 2;
+        if (lum < 0.20) bIdx = 0;
+        else if (lum < 0.40) bIdx = 1;
+        else if (lum < 0.60) bIdx = 2;
+        else if (lum < 0.80) bIdx = 3;
+        else bIdx = 4;
+
+        bands[bIdx].push({ r, g, b, h, s, l, lum });
+      }
+
+      function extractBandColors(pixList, targetCount = 3) {
+        if (!pixList || pixList.length === 0) return [];
+        const clusters = new Map();
+        pixList.forEach(p => {
+          const hBin = Math.floor(p.h / 30);
+          const sBin = Math.floor(p.s * 3);
+          const key = `${hBin}_${sBin}`;
+          if (!clusters.has(key)) {
+            clusters.set(key, { count: 0, r: 0, g: 0, b: 0, sSum: 0, lSum: 0, hSum: 0 });
+          }
+          const c = clusters.get(key);
+          c.count++;
+          c.r += p.r; c.g += p.g; c.b += p.b;
+          c.sSum += p.s; c.lSum += p.l; c.hSum += p.h;
+        });
+
+        const sorted = Array.from(clusters.values()).map(c => {
+          const avgS = c.sSum / c.count;
+          const avgL = c.lSum / c.count;
+          const avgR = Math.round(c.r / c.count);
+          const avgG = Math.round(c.g / c.count);
+          const avgB = Math.round(c.b / c.count);
+          const score = c.count * (Math.pow(avgS, 1.3) * 2.5 + 0.3);
+          return { r: avgR, g: avgG, b: avgB, s: avgS, l: avgL, score };
+        }).sort((a,b) => b.score - a.score);
+
+        const chosen = [];
+        for (const item of sorted) {
+          if (chosen.length >= targetCount) break;
+          const isTooClose = chosen.some(prev => {
+            const dr = prev.r - item.r, dg = prev.g - item.g, db = prev.b - item.b;
+            return Math.sqrt(dr*dr + dg*dg + db*db) < 28;
+          });
+          if (!isTooClose) chosen.push(item);
+        }
+        if (chosen.length === 0 && sorted.length > 0) chosen.push(sorted[0]);
+        return chosen;
+      }
+
+      const bandColors = bands.map((b, idx) => extractBandColors(b, idx === 2 ? 4 : 3));
+
+      const styles = [
+        { id: 'natural', name: 'Natural', desc: '写真本来の美しい光と影・情緒ある14階調' },
+        { id: 'vivid', name: 'Vivid', desc: '彩度とアクセント色を際立たせたイラスト映え発色' },
+        { id: 'pastel', name: 'Pastel', desc: '全体を明るく持ち上げ、淡く澄んだ透明感を与える' },
+        { id: 'cinematic', name: 'Cinematic', desc: '暗部に青紫、明部に温かい光を差す映画調（Teal & Orange）' },
+        { id: 'shadowlift', name: 'Shadow Lift', desc: '暗部を黒く落とさず豊かなニュアンスカラーを配置' },
+        { id: 'colorful', name: 'Colorful', desc: '写真内の多彩な色相変化を贅沢に盛り込んだ多色展開' }
+      ];
+
+      generatedGradResults = styles.map(style => {
+        const nodes = buildNodesForStyle(style.id, bandColors, shadowLift);
+        return { styleId: style.id, name: style.name, desc: style.desc, nodes };
+      });
+
+      renderPhotoGradCards();
+      renderLivePreviewCanvas();
+    }
+
+    function buildNodesForStyle(styleId, bandColors, shadowLift) {
+      const liftFactor = shadowLift / 100;
+      let rawNodes = [];
+
+      bandColors.forEach((bCols, bIdx) => {
+        bCols.forEach(col => {
+          let [h, s, l] = rgbToHsl(col.r, col.g, col.b);
+
+          if (bIdx <= 1) {
+            const liftBoost = (1 - l) * (liftFactor * 0.45);
+            l = Math.min(0.85, l + liftBoost);
+            s = Math.min(1.0, s * (1 + liftFactor * 0.5) + liftFactor * 0.1);
+          } else {
+            l = Math.min(0.97, l + liftFactor * 0.08);
+          }
+
+          if (styleId === 'vivid') {
+            s = Math.min(1.0, s * 1.5 + 0.15);
+          } else if (styleId === 'pastel') {
+            s = Math.min(0.75, s * 0.65);
+            l = Math.min(0.96, l * 0.75 + 0.22);
+          } else if (styleId === 'cinematic') {
+            if (bIdx <= 1) {
+              h = (h * 0.35 + 215 * 0.65);
+              s = Math.min(1.0, s * 1.35 + 0.1);
+            } else if (bIdx >= 3) {
+              h = (h * 0.35 + 38 * 0.65);
+              s = Math.min(1.0, s * 1.25 + 0.1);
+            }
+          } else if (styleId === 'shadowlift') {
+            if (bIdx <= 1) {
+              l = Math.max(0.32, l + 0.18);
+              s = Math.min(1.0, s * 1.4);
+            }
+          } else if (styleId === 'colorful') {
+            s = Math.min(1.0, s * 1.45 + 0.12);
+          }
+
+          const [nr, ng, nb] = hslToRgb(h, s, l);
+          rawNodes.push({ r: nr, g: ng, b: nb, h, s, l, bandIdx: bIdx });
+        });
+      });
+
+      if (rawNodes.length < 5) {
+        rawNodes = [
+          { r: 25, g: 30, b: 45, s: 0.3, l: 0.15, bandIdx: 0 },
+          { r: 70, g: 60, b: 90, s: 0.4, l: 0.32, bandIdx: 1 },
+          { r: 160, g: 100, b: 110, s: 0.5, l: 0.54, bandIdx: 2 },
+          { r: 220, g: 160, b: 140, s: 0.4, l: 0.76, bandIdx: 3 },
+          { r: 250, g: 245, b: 235, s: 0.2, l: 0.95, bandIdx: 4 }
+        ];
+      }
+
+      rawNodes.sort((a, b) => a.l - b.l);
+
+      const targetCount = 14;
+      const finalColors = [];
+
+      for (let i = 0; i < rawNodes.length; i++) {
+        finalColors.push(rawNodes[i]);
+        if (i < rawNodes.length - 1 && finalColors.length < targetCount) {
+          const c1 = rawNodes[i], c2 = rawNodes[i+1];
+          let midH = (c1.h + c2.h) / 2;
+          if (Math.abs(c1.h - c2.h) > 180) midH = (midH + 180) % 360;
+          const midS = (c1.s + c2.s) / 2;
+          const midL = (c1.l + c2.l) / 2;
+          const [mr, mg, mb] = hslToRgb(midH, midS, midL);
+          finalColors.push({ r: mr, g: mg, b: mb, h: midH, s: midS, l: midL });
+        }
+      }
+
+      while (finalColors.length < targetCount) {
+        const last = finalColors[finalColors.length - 1];
+        finalColors.push({ ...last });
+      }
+      const clamped = finalColors.slice(0, targetCount);
+      clamped.sort((a, b) => a.l - b.l);
+
+      return clamped.map((c, idx) => {
+        const pos = idx === 0 ? 0.0 : (idx === targetCount - 1 ? 1.0 : Math.round((idx / (targetCount - 1)) * 100) / 100);
+        return { pos, color: rgbToHex(c.r, c.g, c.b) };
+      });
+    }
+
+    function renderLivePreviewCanvas() {
+      const c = $('testGradPreviewCanvas');
+      if (!c || !currentTestPreviewImg || generatedGradResults.length === 0) return;
+
+      const grad = generatedGradResults[selectedPreviewGradIdx] || generatedGradResults[0];
+      const wrap = c.parentElement;
+      const maxW = wrap.clientWidth || 450, maxH = wrap.clientHeight || 220;
+
+      const iw = currentTestPreviewImg.naturalWidth || currentTestPreviewImg.width || 450;
+      const ih = currentTestPreviewImg.naturalHeight || currentTestPreviewImg.height || 260;
+      const scale = Math.min(maxW / iw, maxH / ih, 1.0);
+      const dw = Math.round(iw * scale), dh = Math.round(ih * scale);
+
+      c.width = dw; c.height = dh;
+
+      const baseCanvas = document.createElement('canvas');
+      baseCanvas.width = dw; baseCanvas.height = dh;
+      baseCanvas.getContext('2d').drawImage(currentTestPreviewImg, 0, 0, dw, dh);
+
+      const mappedCanvas = applyGradientMap(baseCanvas, grad.nodes);
+
+      const ctx = c.getContext('2d');
+      ctx.clearRect(0, 0, dw, dh);
+      ctx.drawImage(baseCanvas, 0, 0);
+
+      const bMode = $('prevBlendMode').value || 'color';
+      const opVal = (parseInt($('prevOpacity').value) || 30) / 100;
+
+      ctx.save();
+      ctx.globalAlpha = opVal;
+      ctx.globalCompositeOperation = bMode;
+      ctx.drawImage(mappedCanvas, 0, 0);
+      ctx.restore();
+    }
+
+    function renderPhotoGradCards() {
+      const container = $('photoGradCardsContainer');
+      container.innerHTML = '';
+
+      generatedGradResults.forEach((res, idx) => {
+        const card = document.createElement('div');
+        card.className = `grad-card ${idx === selectedPreviewGradIdx ? 'preview-active' : ''}`;
+
+        const cssBg = getGradientCSS(res.nodes);
+        const hexListStr = res.nodes.map(n => `${n.color} (${Math.round(n.pos*100)}%)`).join(', ');
+
+        let chipsHtml = '';
+        res.nodes.forEach(n => {
+          chipsHtml += `<div class="grad-chip-dot" style="background:${n.color};" title="${n.color} (${Math.round(n.pos*100)}%)"></div>`;
+        });
+
+        card.innerHTML = `
+          <div class="grad-card-header">
+            <div class="grad-card-title">
+              <span>${res.name}</span>
+              <span style="font-size:10px; font-weight:normal; color:#aaa;">${res.nodes.length}ノード</span>
+            </div>
+            <div class="grad-card-meta">${res.desc}</div>
+          </div>
+          <div class="grad-card-bar" style="background:${cssBg}; cursor:pointer;" title="クリックでプレビュー確認"></div>
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-top:2px;">
+            <div class="grad-chips-wrap">${chipsHtml}</div>
+            <div class="grad-card-actions">
+              <button type="button" class="btn-sub" data-act="grd">💾 .grd</button>
+              <button type="button" class="btn-sub" data-act="copy">📋 コピー</button>
+              <button type="button" class="btn-sub" data-act="save">＋ 保存</button>
+              <button type="button" class="btn-act" data-act="apply" style="padding:3px 7px; font-size:10px;">🎨 適用</button>
+            </div>
+          </div>
+        `;
+
+        const setPreview = () => {
+          selectedPreviewGradIdx = idx;
+          document.querySelectorAll('.grad-card').forEach((c, ci) => c.classList.toggle('preview-active', ci === idx));
+          renderLivePreviewCanvas();
+        };
+
+        card.onclick = (e) => {
+          const btn = e.target.closest('[data-act]');
+          if (btn) {
+            e.stopPropagation();
+            const act = btn.getAttribute('data-act');
+            if (act === 'grd') {
+              exportGRDFiles([{ name: `写真_${res.name}`, nodes: res.nodes }], `Photo_${res.name}.grd`);
+            } else if (act === 'copy') {
+              copyToClipboard(hexListStr);
+            } else if (act === 'save') {
+              gradSets.push({ id: 'photo_' + Date.now(), name: `写真: ${res.name}`, nodes: JSON.parse(JSON.stringify(res.nodes)) });
+              saveStoredGradPresets();
+              renderGradPresetList();
+              alert(`「写真: ${res.name}」を永続保存しました！`);
+            } else if (act === 'apply') {
+              const bMode = $('prevBlendMode').value || 'color';
+              const opVal = parseInt($('prevOpacity').value) || 30;
+              applyGeneratedGradient(res.name, res.nodes, bMode, opVal);
+              $('photoGradModal').style.display = 'none';
+            }
+            return;
+          }
+          setPreview();
+        };
+
+        container.appendChild(card);
+      });
+    }
+
+    function copyToClipboard(text) {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(() => {
+          alert('グラデーションの全ノード (HEX & 位置) をコピーしました！\n\n' + text);
+        }).catch(() => fallbackCopy(text));
+      } else {
+        fallbackCopy(text);
+      }
+    }
+    function fallbackCopy(text) {
+      const ta = document.createElement('textarea');
+      ta.value = text; document.body.appendChild(ta); ta.select();
+      document.execCommand('copy'); document.body.removeChild(ta);
+      alert('クリップボードにコピーしました！\n\n' + text);
+    }
+
+    function applyGeneratedGradient(name, nodes, blend = 'color', opacity = 100) {
+      let cur = getActiveLayer();
+      if (!cur || cur.type !== 'gradmap') {
+        cur = addGradientLayer(`写真: ${name}`, nodes, blend, opacity);
+      } else {
+        cur.presetName = `写真: ${name}`;
+        cur.nodes = JSON.parse(JSON.stringify(nodes));
+        cur.blend = blend;
+        cur.opacity = opacity;
+        activeGradNodeIdx = 0;
+        syncActiveProps();
+        syncGradEditorUI();
+        pushState();
+        render();
+      }
+    }
+
+    // --- スポイトモーダル ---
+    let eyedropperTarget = 'grad';
+    let selectedEyedropperHex = '#000000';
+    let lastPickTime = 0;
+
+    function openEyedropper(target) {
+      eyedropperTarget = target;
+      $('eyedropperModal').style.display = 'flex';
+      $('eyeGradEditorArea').style.display = (target === 'grad') ? 'flex' : 'none';
+      loadCanvasToEyedropper();
+      if (target === 'grad') syncGradEditorUI();
+    }
+
+    $('bOpenEyedropperGrad').onclick = () => openEyedropper('grad');
+    $('bOpenEyedropperTone').onclick = () => openEyedropper('tone');
+    $('bCloseEyedropper').onclick = () => { $('eyedropperModal').style.display = 'none'; };
+
+    $('bLoadEyePhoto').onclick = () => $('eyedropperFileInput').click();
+    $('eyedropperFileInput').onchange = async function() {
+      if (!this.files || !this.files[0]) return;
+      try {
+        const im = await loadImageFromFile(this.files[0]);
+        drawImageToEyedropper(im);
+      } catch(e) { alert('画像の読込に失敗しました'); }
+      this.value = '';
+    };
+
+    function loadCanvasToEyedropper() {
+      const firstImgL = layers.find(l => l.type === 'image');
+      if (firstImgL && imageStore.has(firstImgL.imgStoreId)) {
+        drawImageToEyedropper(imageStore.get(firstImgL.imgStoreId));
+      } else {
+        const c = $('eyedropperCanvas');
+        c.width = 300; c.height = 200;
+        const ctx = c.getContext('2d');
+        ctx.fillStyle = '#333'; ctx.fillRect(0, 0, 300, 200);
+        ctx.fillStyle = '#fff'; ctx.font = '12px sans-serif'; ctx.textAlign = 'center';
+        ctx.fillText('画像を選択してください', 150, 100);
+      }
+    }
+    $('bLoadEyeCanvas').onclick = loadCanvasToEyedropper;
+
+    function drawImageToEyedropper(imgSource) {
+      const c = $('eyedropperCanvas');
+      c.width = imgSource.naturalWidth || imgSource.width;
+      c.height = imgSource.naturalHeight || imgSource.height;
+      const ctx = c.getContext('2d');
+      ctx.drawImage(imgSource, 0, 0);
+    }
+
+    const loupeEl = $('eyedropperLoupe');
+    const loupeC = $('loupeCanvas');
+    const lctx = loupeC.getContext('2d');
+
+    function pickEyedropperColor(e) {
+      const c = $('eyedropperCanvas');
+      const rect = c.getBoundingClientRect();
+      const scaleX = c.width / rect.width;
+      const scaleY = c.height / rect.height;
+      const x = Math.floor((e.clientX - rect.left) * scaleX);
+      const y = Math.floor((e.clientY - rect.top) * scaleY);
+
+      if (x >= 0 && x < c.width && y >= 0 && y < c.height) {
+        const pixel = c.getContext('2d').getImageData(x, y, 1, 1).data;
+        selectedEyedropperHex = rgbToHex(pixel[0], pixel[1], pixel[2]);
+        $('eyedropperSwatch').style.background = selectedEyedropperHex;
+        $('eyedropperHex').textContent = selectedEyedropperHex;
+
+        loupeEl.style.display = 'block';
+        const wrapRect = $('eyedropperWrap').getBoundingClientRect();
+        loupeEl.style.left = (e.clientX - wrapRect.left - 27) + 'px';
+        loupeEl.style.top = (e.clientY - wrapRect.top - 65) + 'px';
+
+        lctx.imageSmoothingEnabled = false;
+        lctx.clearRect(0, 0, 54, 54);
+        lctx.drawImage(c, x - 4, y - 4, 9, 9, 0, 0, 54, 54);
+        lctx.strokeStyle = '#fff';
+        lctx.strokeRect(23, 23, 8, 8);
+
+        const cur = getActiveLayer();
+        if (eyedropperTarget === 'grad' && cur && cur.type === 'gradmap' && cur.nodes[activeGradNodeIdx]) {
+          cur.nodes[activeGradNodeIdx].color = selectedEyedropperHex;
+          cur.presetName = 'カスタム';
+          syncGradEditorUI();
+          render();
+        }
+      }
+    }
+
+    let isEyePicking = false;
+    $('eyedropperCanvas').addEventListener('pointerdown', e => {
+      e.preventDefault();
+      isEyePicking = true;
+      pickEyedropperColor(e);
+      e.target.setPointerCapture(e.pointerId);
+    });
+    $('eyedropperCanvas').addEventListener('pointermove', e => {
+      if (isEyePicking) pickEyedropperColor(e);
+    });
+    
+    $('eyedropperCanvas').addEventListener('pointerup', e => {
+      if (isEyePicking) {
+        isEyePicking = false;
+        loupeEl.style.display = 'none';
+
+        const now = Date.now();
+        if (now - lastPickTime > 150) {
+          lastPickTime = now;
+          if (eyedropperTarget === 'grad' && $('eyeAutoStep').checked) {
+            const cur = getActiveLayer();
+            if (cur && cur.nodes && cur.nodes.length > 1) {
+              const sortedWithOrigIdx = cur.nodes.map((n, i) => ({ ...n, origIdx: i })).sort((a,b) => a.pos - b.pos);
+              const curPosRank = sortedWithOrigIdx.findIndex(item => item.origIdx === activeGradNodeIdx);
+              const nextPosRank = (curPosRank + 1) % sortedWithOrigIdx.length;
+              activeGradNodeIdx = sortedWithOrigIdx[nextPosRank].origIdx;
+              syncGradEditorUI();
+            }
+          }
+        }
+        pushState();
+      }
+    });
+
+    $('bApplyEyedropperColor').onclick = () => {
+      const cur = getActiveLayer();
+      if (!cur) return;
+      if (eyedropperTarget === 'tone' && cur.type === 'tone') {
+        cur.color = selectedEyedropperHex;
+        $('tColor').value = selectedEyedropperHex;
+        syncActiveProps();
+      }
+      $('eyedropperModal').style.display = 'none';
+      pushState();
+      render();
+    };
+
+    $('bUploadImg').onclick = () => $('fileInput').click();
+    $('fileInput').onchange = async function() {
+      if (!this.files || !this.files[0]) return;
+      try {
+        const im = await loadImageFromFile(this.files[0]);
+        addImageLayer(im, im.naturalWidth || im.width, im.naturalHeight || im.height);
+      } catch (err) {
+        alert('写真の読み込みに失敗しました: ' + err.message);
+      }
+      this.value = '';
+    };
+
+    // ノイズ生成
+    $('noiseC').width = 128; $('noiseC').height = 128;
+    const nCtx = $('noiseC').getContext('2d'), nImg = nCtx.createImageData(128, 128);
+    for (let i = 0; i < nImg.data.length; i += 4) { const v = Math.random()*255; nImg.data[i]=v; nImg.data[i+1]=v; nImg.data[i+2]=v; nImg.data[i+3]=60; }
+    nCtx.putImageData(nImg, 0, 0);
+
+    document.querySelectorAll('.ink-chip').forEach(c => c.onclick = () => {
+      $('tColor').value = c.getAttribute('data-c');
+      const cur = getActiveLayer();
+      if (cur && cur.type === 'tone') { cur.color = c.getAttribute('data-c'); syncActiveProps(); pushState(); render(); updateNavigatorUI(); }
+    });
+
+    $('bA45').onclick = () => { const c = getActiveLayer(); if (c && c.type === 'tone') { c.angle = 45; syncActiveProps(); pushState(); render(); updateNavigatorUI(); } };
+    $('bA0').onclick = () => { const c = getActiveLayer(); if (c && c.type === 'tone') { c.angle = 0; syncActiveProps(); pushState(); render(); updateNavigatorUI(); } };
+    $('bCenter').onclick = () => { const c = getActiveLayer(); if (c && !c.locked) { c.x = Math.round((baseW - c.w)/2); c.y = Math.round((baseH - c.h)/2); syncActiveProps(); pushState(); render(); updateNavigatorUI(); } };
+    $('bFit').onclick = () => { const c = getActiveLayer(); if (c && !c.locked) { c.x = 0; c.y = 0; c.w = baseW; c.h = baseH; syncActiveProps(); pushState(); render(); updateNavigatorUI(); } };
+
+    $('bSquare11').onclick = () => {
+      const c = getActiveLayer();
+      if (c && !c.locked) {
+        const side = Math.max(c.w, c.h);
+        c.w = side; c.h = side;
+        syncActiveProps(); pushState(); render(); updateNavigatorUI();
+      }
+    };
+
+    $('bReseed').onclick = () => {
+      const cur = getActiveLayer();
+      if (cur && cur.type === 'tone') {
+        cur.randomSeed = Math.floor(Math.random() * 100000);
+        pushState(); render(); updateNavigatorUI();
+      }
+    };
+
+    $('tDotShape').onchange = function() {
+      const c = getActiveLayer();
+      if (c && c.type === 'tone') {
+        c.dotShape = this.value;
+        syncActiveProps(); pushState(); render(); updateNavigatorUI();
+      }
+    };
+
+    $('bModeComp').onclick = () => { saveMode = 'comp'; $('bModeComp').classList.add('active'); $('bModeDot').classList.remove('active'); render(); updateNavigatorUI(); };
+    $('bModeDot').onclick = () => { saveMode = 'dot'; $('bModeDot').classList.add('active'); $('bModeComp').classList.remove('active'); render(); updateNavigatorUI(); };
+
+    function buildFramePath(ctx, shape, x, y, w, h, vertex = 5) {
+      ctx.beginPath();
+      const cx = x + w / 2, cy = y + h / 2;
+      const rx = w / 2, ry = h / 2;
+
+      if (shape === 'rect') {
+        ctx.rect(x, y, w, h);
+      } else if (shape === 'ellipse') {
+        ctx.ellipse(cx, cy, Math.max(0.1, rx), Math.max(0.1, ry), 0, 0, Math.PI * 2);
+      } else if (shape === 'roundrect') {
+        const rad = Math.min(Math.abs(rx), Math.abs(ry), vertex * 4);
+        ctx.moveTo(x + rad, y);
+        ctx.arcTo(x + w, y, x + w, y + h, rad);
+        ctx.arcTo(x + w, y + h, x, y + h, rad);
+        ctx.arcTo(x, y + h, x, y, rad);
+        ctx.arcTo(x, y, x + w, y, rad);
+      } else if (shape === 'polygon') {
+        const sides = Math.max(3, vertex);
+        for (let i = 0; i < sides; i++) {
+          const th = (i * 2 * Math.PI) / sides - Math.PI / 2;
+          const px = cx + rx * Math.cos(th);
+          const py = cy + ry * Math.sin(th);
+          if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+        }
+        ctx.closePath();
+      } else if (shape === 'star') {
+        const points = Math.max(4, vertex) * 2;
+        for (let i = 0; i < points; i++) {
+          const th = (i * Math.PI) / (points / 2) - Math.PI / 2;
+          const r = (i % 2 === 0) ? rx : rx * 0.45;
+          const px = cx + r * Math.cos(th);
+          const py = cy + (r * (ry / rx)) * Math.sin(th);
+          if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+        }
+        ctx.closePath();
+      }
+    }
+
+    function drawDotShape(ctx, s, cx, cy, r, seed = 0, jitter = 45) {
+      if (r <= 0.2) return;
+      const jitterFactor = (jitter / 100) * 0.45;
+
+      if (s === 'hand') {
+        const pts = 7, step = (Math.PI * 2) / pts;
+        ctx.beginPath();
+        const points = [];
+        for (let i = 0; i < pts; i++) {
+          const angle = i * step + (pseudoRandom(seed + i * 11) - 0.5) * jitterFactor * 1.2;
+          const radVar = r * (1 + (pseudoRandom(seed + i * 17) - 0.5) * jitterFactor * 1.8);
+          points.push({ x: cx + Math.cos(angle) * radVar, y: cy + Math.sin(angle) * radVar });
+        }
+        ctx.moveTo((points[0].x + points[pts - 1].x) / 2, (points[0].y + points[pts - 1].y) / 2);
+        for (let i = 0; i < pts; i++) {
+          const next = (i + 1) % pts;
+          ctx.quadraticCurveTo(points[i].x, points[i].y, (points[i].x + points[next].x) / 2, (points[i].y + points[next].y) / 2);
+        }
+        ctx.closePath();
+        ctx.fill();
+      } else if (s === 'circle') {
+        ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI*2); ctx.fill();
+      } else if (s === 'square' || s === 'diamond') {
+        ctx.save();
+        ctx.translate(cx, cy);
+        if (s === 'diamond') ctx.rotate(Math.PI/4);
+        const size = r * 1.6;
+        const jx = (pseudoRandom(seed) - 0.5) * jitterFactor * r;
+        const jy = (pseudoRandom(seed+1) - 0.5) * jitterFactor * r;
+        ctx.fillRect(-size/2 + jx, -size/2 + jy, size, size);
+        ctx.restore();
+      } else if (s === 'cross') {
+        ctx.save();
+        ctx.translate(cx, cy);
+        const t = Math.max(1, r*0.4);
+        const jx = (pseudoRandom(seed) - 0.5) * jitterFactor * r;
+        const jy = (pseudoRandom(seed+1) - 0.5) * jitterFactor * r;
+        ctx.fillRect(-t + jx, -r + jy, t*2, r*2);
+        ctx.fillRect(-r + jx, -t + jy, r*2, t*2);
+        ctx.restore();
+      }
+    }
+
+    $('bOpenCanvasModal').onclick = () => {
+      $('cModalW').value = baseW; $('cModalH').value = baseH;
+      $('canvasModal').style.display = 'flex';
+    };
+    $('bCloseCanvasModal').onclick = () => $('canvasModal').style.display = 'none';
+    $('bCancelCanvasModal').onclick = () => $('canvasModal').style.display = 'none';
+
+    document.querySelectorAll('.anchor-btn').forEach(btn => {
+      btn.onclick = () => {
+        document.querySelectorAll('.anchor-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        selectedAnchor = btn.getAttribute('data-anchor');
+      };
+    });
+
+    $('bApplyCanvasModal').onclick = () => {
+      const newW = parseInt($('cModalW').value);
+      const newH = parseInt($('cModalH').value);
+      if (newW > 0 && newH > 0) resizeCanvasWithAnchor(newW, newH, selectedAnchor);
+      $('canvasModal').style.display = 'none';
+    };
+
+    function resizeCanvasWithAnchor(newW, newH, anchor) {
+      const dw = newW - baseW, dh = newH - baseH;
+      let ox = 0, oy = 0;
+      if (anchor === 'tc' || anchor === 'center' || anchor === 'bc') ox = dw / 2;
+      if (anchor === 'tr' || anchor === 'mr' || anchor === 'br') ox = dw;
+      if (anchor === 'ml' || anchor === 'center' || anchor === 'mr') oy = dh / 2;
+      if (anchor === 'bl' || anchor === 'bc' || anchor === 'br') oy = dh;
+
+      baseW = newW; baseH = newH;
+      layers.forEach(l => {
+        if (l.x !== undefined) l.x += Math.round(ox);
+        if (l.y !== undefined) l.y += Math.round(oy);
+      });
+      syncActiveProps(); pushState(); render(); fitToScreen();
+    }
+
+    function onPropChange(isFinal = false) {
+      const cur = getActiveLayer();
+      if (cur) {
+        cur.blend = $('pBlend').value;
+        cur.opacity = parseInt($('pOpacity').value);
+        $('vOpacity').textContent = `${cur.opacity}%`;
+
+        cur.frameShape = $('tFrameShape').value;
+        cur.vertex = parseInt($('tVertex').value);
+        cur.w = parseInt($('tW').value) || cur.w;
+        cur.h = parseInt($('tH').value) || cur.h;
+        cur.x = parseInt($('tX').value) || cur.x;
+        cur.y = parseInt($('tY').value) || cur.y;
+
+        if (cur.type === 'tone') {
+          cur.mode = $('tMode').value;
+          cur.color = $('tColor').value;
+          cur.dotShape = $('tDotShape').value;
+          cur.pat = $('tPat').value;
+          cur.angle = parseInt($('tAng').value);
+          cur.size = parseInt($('tSize').value);
+          cur.gap = parseInt($('tGap').value);
+          cur.misprint = parseInt($('tMisprint').value);
+          cur.handJitter = parseInt($('tHandJitter').value);
+
+          const isSingleColor = (cur.mode === 'normal' || cur.mode === 'halftone');
+          $('toneColorSection').style.display = isSingleColor ? 'flex' : 'none';
+        }
+
+        if (cur.type === 'image') {
+          cur.w = parseInt($('tW').value) || cur.w;
+          cur.h = parseInt($('tH').value) || cur.h;
+        }
+      }
+
+      syncActiveProps(); renderLayerStack();
+      if (isFinal) pushState();
+      render();
+      updateNavigatorUI();
+    }
+
+    const liveInputs = [
+      'pBlend', 'pOpacity', 'tFrameShape', 'tVertex', 'tMode', 'tDotShape', 'tPat', 'tAng', 'tSize', 'tGap',
+      'tMisprint', 'tHandJitter', 'tW', 'tH', 'tX', 'tY', 'grain'
+    ];
+    liveInputs.forEach(id => {
+      $(id).oninput = () => onPropChange(false);
+      $(id).onchange = () => onPropChange(true);
+    });
+    $('tColor').oninput = () => onPropChange(false);
+    $('tColor').onchange = () => onPropChange(true);
+
+    // --- ジェスチャー制御 (iPadタッチ対応) ---
+    let isDrag = false, isResize = false, resizeHandle = null;
+    let offX = 0, offY = 0, snapLineX = null, snapLineY = null;
+    let resizeStartW = 0, resizeStartH = 0, resizeStartX = 0, resizeStartY = 0, resizeStartAspect = 1;
+
+    let isPanning = false, panStartX = 0, panStartY = 0;
+    let initialPinchDist = 0, initialPinchZoom = 1.0;
+    let isSpacePressed = false;
+
+    window.addEventListener('keydown', e => {
+      if (e.code === 'Space' && !['input','select','textarea'].includes(document.activeElement?.tagName.toLowerCase())) {
+        isSpacePressed = true;
+        $('previewArea').style.cursor = 'grab';
+      }
+    });
+    window.addEventListener('keyup', e => {
+      if (e.code === 'Space') {
+        isSpacePressed = false;
+        $('previewArea').style.cursor = 'default';
+      }
+    });
+
+    function getCanvasCoords(clientX, clientY) {
+      const totalStageW = baseW + STAGE_PAD * 2;
+      const totalStageH = baseH + STAGE_PAD * 2;
+      const centerScreenX = panX + totalStageW / 2;
+      const centerScreenY = panY + totalStageH / 2;
+
+      let dx = (clientX - centerScreenX) / zoom;
+      let dy = (clientY - centerScreenY) / zoom;
+
+      if (isFlipH) dx = -dx;
+
+      const stageX = dx + totalStageW / 2;
+      const stageY = dy + totalStageH / 2;
+
+      return { x: stageX - STAGE_PAD, y: stageY - STAGE_PAD };
+    }
+
+    function calculateSnap(cur, targetX, targetY) {
+      const SNAP_DIST = 8;
+      let finalX = targetX, finalY = targetY;
+      snapLineX = null; snapLineY = null;
+
+      const xTargets = [ 0, baseW * 0.25, baseW * 0.5, baseW * 0.75, baseW ];
+      const yTargets = [ 0, baseH * 0.25, baseH * 0.5, baseH * 0.75, baseH ];
+
+      layers.forEach(l => {
+        if (l.id !== cur.id && l.visible) {
+          xTargets.push(l.x, l.x + l.w / 2, l.x + l.w);
+          yTargets.push(l.y, l.y + l.h / 2, l.y + l.h);
+        }
+      });
+
+      const myXPoints = [
+        { pt: targetX, offset: 0 },
+        { pt: targetX + cur.w / 2, offset: cur.w / 2 },
+        { pt: targetX + cur.w, offset: cur.w }
+      ];
+      for (const myP of myXPoints) {
+        for (const tg of xTargets) {
+          if (Math.abs(myP.pt - tg) < SNAP_DIST) {
+            finalX = tg - myP.offset; snapLineX = tg; break;
+          }
+        }
+        if (snapLineX !== null) break;
+      }
+
+      const myYPoints = [
+        { pt: targetY, offset: 0 },
+        { pt: targetY + cur.h / 2, offset: cur.h / 2 },
+        { pt: targetY + cur.h, offset: cur.h }
+      ];
+      for (const myP of myYPoints) {
+        for (const tg of yTargets) {
+          if (Math.abs(myP.pt - tg) < SNAP_DIST) {
+            finalY = tg - myP.offset; snapLineY = tg; break;
+          }
+        }
+        if (snapLineY !== null) break;
+      }
+
+      return { x: finalX, y: finalY };
+    }
+
+    $('previewArea').addEventListener('wheel', e => {
+      e.preventDefault();
+      if (e.ctrlKey || e.metaKey) {
+        const factor = e.deltaY < 0 ? 1.15 : 0.85;
+        setZoom(zoom * factor);
+      } else {
+        panX -= e.deltaX; panY -= e.deltaY;
+        updateStageTransform();
+      }
+    }, { passive: false });
+
+    const activeTouches = new Map();
+
+    $('previewArea').addEventListener('pointerdown', e => {
+      if (e.target.closest('.navigator-window') || e.target.closest('.eyedropper-modal') || e.target.closest('.photo-grad-modal') || e.target.closest('.save-modal')) return;
+      activeTouches.set(e.pointerId, { x: e.clientX, y: e.clientY });
+
+      if (activeTouches.size === 2) {
+        isDrag = false; isResize = false; isPanning = true;
+        const pts = Array.from(activeTouches.values());
+        initialPinchDist = Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y);
+        initialPinchZoom = zoom;
+        panStartX = (pts[0].x + pts[1].x) / 2 - panX;
+        panStartY = (pts[0].y + pts[1].y) / 2 - panY;
+        return;
+      }
+
+      if (isSpacePressed || e.button === 1) {
+        isPanning = true;
+        panStartX = e.clientX - panX;
+        panStartY = e.clientY - panY;
+        $('previewArea').style.cursor = 'grabbing';
+        return;
+      }
+
+      if (activeTouches.size === 1 && e.button === 0) {
+        const p = getCanvasCoords(e.clientX, e.clientY);
+        const cur = getActiveLayer();
+
+        if (cur && !cur.locked) {
+          const handles = [
+            { id: 'tl', x: cur.x, y: cur.y },
+            { id: 'tr', x: cur.x + cur.w, y: cur.y },
+            { id: 'br', x: cur.x + cur.w, y: cur.y + cur.h },
+            { id: 'bl', x: cur.x, y: cur.y + cur.h }
+          ];
+          for (const h of handles) {
+            if (Math.hypot(p.x - h.x, p.y - h.y) <= (18 / zoom)) {
+              isResize = true;
+              resizeHandle = h.id;
+              resizeStartX = p.x; resizeStartY = p.y;
+              resizeStartW = cur.w; resizeStartH = cur.h;
+              resizeStartAspect = (cur.w > 0 && cur.h > 0) ? (cur.w / cur.h) : 1;
+              return;
+            }
+          }
+        }
+
+        for (let i = layers.length - 1; i >= 0; i--) {
+          const l = layers[i];
+          if (l.visible && !l.locked && p.x >= l.x && p.x <= l.x + l.w && p.y >= l.y && p.y <= l.y + l.h) {
+            activeLayerId = l.id;
+            renderLayerStack();
+            syncActiveProps();
+            isDrag = true; offX = p.x - l.x; offY = p.y - l.y;
+            render();
+            return;
+          }
+        }
+      }
+    });
+
+    window.addEventListener('pointermove', e => {
+      if (activeTouches.has(e.pointerId)) {
+        activeTouches.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      }
+
+      if (activeTouches.size === 2 && isPanning) {
+        const pts = Array.from(activeTouches.values());
+        const currentDist = Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y);
+        const centerScreenX = (pts[0].x + pts[1].x) / 2;
+        const centerScreenY = (pts[0].y + pts[1].y) / 2;
+
+        if (initialPinchDist > 0 && Math.abs(currentDist - initialPinchDist) > 8) {
+          const newZ = initialPinchZoom * (1 + (currentDist / initialPinchDist - 1) * 0.7);
+          setZoom(newZ);
+        }
+        panX = centerScreenX - panStartX;
+        panY = centerScreenY - panStartY;
+        updateStageTransform();
+        return;
+      }
+
+      if (isPanning) {
+        panX = e.clientX - panStartX; panY = e.clientY - panStartY;
+        updateStageTransform();
+        return;
+      }
+
+      const cur = getActiveLayer();
+      if (!cur || cur.locked) return;
+      const p = getCanvasCoords(e.clientX, e.clientY);
+
+      if (isResize) {
+        const dx = p.x - resizeStartX, dy = p.y - resizeStartY;
+        let newW = resizeStartW, newH = resizeStartH;
+
+        if (resizeHandle === 'br') {
+          newW = Math.max(10, resizeStartW + dx); newH = Math.max(10, resizeStartH + dy);
+        } else if (resizeHandle === 'tr') {
+          newW = Math.max(10, resizeStartW + dx); newH = Math.max(10, resizeStartH - dy);
+          cur.y = resizeStartY + dy;
+        } else if (resizeHandle === 'bl') {
+          newW = Math.max(10, resizeStartW - dx); newH = Math.max(10, resizeStartH + dy);
+          cur.x = resizeStartX + dx;
+        } else if (resizeHandle === 'tl') {
+          newW = Math.max(10, resizeStartW - dx); newH = Math.max(10, resizeStartH - dy);
+          cur.x = resizeStartX + dx; cur.y = resizeStartY + dy;
+        }
+
+        if (e.shiftKey || $('aspectLock').checked) {
+          const currentAspect = newW / newH;
+          if (currentAspect > resizeStartAspect) newW = Math.round(newH * resizeStartAspect);
+          else newH = Math.round(newW / resizeStartAspect);
+        }
+
+        cur.w = Math.round(newW); cur.h = Math.round(newH);
+        syncActiveProps(); render(); updateNavigatorUI();
+        return;
+      }
+
+      if (isDrag) {
+        const rawX = p.x - offX, rawY = p.y - offY;
+        const snapped = calculateSnap(cur, rawX, rawY);
+        cur.x = Math.round(snapped.x); cur.y = Math.round(snapped.y);
+        syncActiveProps(); render(); updateNavigatorUI();
+      }
+    });
+
+    function endGesture(e) {
+      activeTouches.delete(e.pointerId);
+      if (activeTouches.size < 2) isPanning = false;
+      if (isDrag || isResize) {
+        isDrag = false; isResize = false; resizeHandle = null;
+        snapLineX = null; snapLineY = null;
+        pushState(); render(); updateNavigatorUI();
+      }
+      if (!isSpacePressed) $('previewArea').style.cursor = 'default';
+    }
+    window.addEventListener('pointerup', endGesture);
+    window.addEventListener('pointercancel', endGesture);
+
+    // --- 高速グラデーションマップLUTエンジン ---
+    function applyGradientMap(srcCanvas, nodes) {
+      const c = document.createElement('canvas');
+      c.width = srcCanvas.width; c.height = srcCanvas.height;
+      const ctx = c.getContext('2d');
+      ctx.drawImage(srcCanvas, 0, 0);
+
+      const imgData = ctx.getImageData(0, 0, c.width, c.height);
+      const d = imgData.data;
+
+      const lutR = new Uint8Array(256), lutG = new Uint8Array(256), lutB = new Uint8Array(256);
+      const sorted = [...nodes].sort((a,b) => a.pos - b.pos);
+
+      for (let i = 0; i < 256; i++) {
+        const t = i / 255;
+        let r = 0, g = 0, b = 0;
+        if (t <= sorted[0].pos) {
+          const rgb = hexToRgb(sorted[0].color); r = rgb.r; g = rgb.g; b = rgb.b;
+        } else if (t >= sorted[sorted.length - 1].pos) {
+          const rgb = hexToRgb(sorted[sorted.length - 1].color); r = rgb.r; g = rgb.g; b = rgb.b;
+        } else {
+          for (let j = 0; j < sorted.length - 1; j++) {
+            if (t >= sorted[j].pos && t <= sorted[j+1].pos) {
+              const ratio = (t - sorted[j].pos) / (sorted[j+1].pos - sorted[j].pos);
+              const c1 = hexToRgb(sorted[j].color), c2 = hexToRgb(sorted[j+1].color);
+              r = c1.r + (c2.r - c1.r) * ratio;
+              g = c1.g + (c2.g - c1.g) * ratio;
+              b = c1.b + (c2.b - c1.b) * ratio;
+              break;
+            }
+          }
+        }
+        lutR[i] = Math.round(r); lutG[i] = Math.round(g); lutB[i] = Math.round(b);
+      }
+
+      for (let i = 0; i < d.length; i += 4) {
+        if (d[i+3] === 0) continue;
+        const lum = Math.round(0.299 * d[i] + 0.587 * d[i+1] + 0.114 * d[i+2]);
+        d[i] = lutR[lum]; d[i+1] = lutG[lum]; d[i+2] = lutB[lum];
+      }
+      ctx.putImageData(imgData, 0, 0);
+      return c;
+    }
+
+    // --- レイヤー単体描画 ---
+    function renderSingleLayer(l, w, h, sampleCanvas, prevCanvas) {
+      const c = document.createElement('canvas');
+      c.width = w; c.height = h;
+      const ctx = c.getContext('2d');
+      if (!l.visible) return c;
+
+      if (l.type === 'image') {
+        const imgC = imageStore.get(l.imgStoreId);
+        if (imgC) {
+          ctx.save();
+          buildFramePath(ctx, l.frameShape || 'rect', l.x, l.y, l.w, l.h, l.vertex || 5);
+          ctx.clip();
+          ctx.drawImage(imgC, l.x, l.y, l.w, l.h);
+          ctx.restore();
+        }
+        return c;
+      }
+
+      if (l.type === 'tone') {
+        const sampleCtx = sampleCanvas ? sampleCanvas.getContext('2d') : null;
+        const drawDots = (ox=0, oy=0, col=null) => {
+          ctx.save();
+          const cx = l.x + ox + l.w/2, cy = l.y + oy + l.h/2, rad = (l.angle * Math.PI)/180;
+
+          ctx.save();
+          buildFramePath(ctx, l.frameShape || 'rect', l.x + ox, l.y + oy, l.w, l.h, l.vertex || 5);
+          ctx.clip();
+
+          ctx.translate(cx, cy);
+          ctx.rotate(rad);
+          const diag = Math.sqrt(l.w*l.w + l.h*l.h), step = l.size + l.gap, baseR = l.size/2;
+          let row = 0;
+
+          const baseSeed = l.randomSeed || 12345;
+          const jitter = l.handJitter !== undefined ? l.handJitter : 45;
+
+          for (let gy = -diag/2; gy <= diag/2; gy += step) {
+            const xoff = (l.pat === 'stagger' && row % 2 === 1) ? step/2 : 0;
+            let colIdx = 0;
+
+            for (let gx = -diag/2 + xoff; gx <= diag/2; gx += step) {
+              const dotSeed = baseSeed + row * 997 + colIdx * 31;
+              let posJitterX = 0, posJitterY = 0;
+              if (jitter > 0) {
+                const jRatio = (jitter / 100) * (step * 0.12);
+                posJitterX = (pseudoRandom(dotSeed + 1) - 0.5) * jRatio;
+                posJitterY = (pseudoRandom(dotSeed + 2) - 0.5) * jRatio;
+              }
+
+              const finalGx = gx + posJitterX;
+              const finalGy = gy + posJitterY;
+
+              const ox2 = Math.floor(cx + (finalGx * Math.cos(rad) - finalGy * Math.sin(rad)));
+              const oy2 = Math.floor(cy + (finalGx * Math.sin(rad) + finalGy * Math.cos(rad)));
+              let curR = baseR, curC = col || l.color;
+
+              if (sampleCtx && ox2 >= 0 && ox2 < w && oy2 >= 0 && oy2 < h) {
+                const imgD = sampleCtx.getImageData(ox2, oy2, 1, 1).data;
+                if (imgD[3] > 10) {
+                  if (!col && (l.mode === 'color-halftone' || l.mode === 'mosaic')) curC = `rgb(${imgD[0]},${imgD[1]},${imgD[2]})`;
+                  if (l.mode === 'color-halftone' || l.mode === 'halftone') {
+                    curR = Math.max(0.3, (1 - (0.299*imgD[0] + 0.587*imgD[1] + 0.114*imgD[2])/255) * baseR * 1.55);
+                  }
+                }
+              }
+              ctx.fillStyle = curC;
+              drawDotShape(ctx, l.dotShape || 'square', finalGx, finalGy, curR, dotSeed, jitter);
+              colIdx++;
+            }
+            row++;
+          }
+          ctx.restore();
+          ctx.restore();
+        };
+
+        const misp = l.misprint || 0;
+        if (misp > 0) { drawDots(misp, misp*0.5, '#ff3366'); drawDots(-misp, -misp*0.5, '#00ccff'); }
+        drawDots();
+        return c;
+      }
+
+      if (l.type === 'gradmap') {
+        const targetSrc = (l.clip && prevCanvas) ? prevCanvas : (sampleCanvas || prevCanvas);
+        const gradC = applyGradientMap(targetSrc, l.nodes || gradSets[0].nodes);
+
+        ctx.save();
+        buildFramePath(ctx, l.frameShape || 'rect', l.x, l.y, l.w, l.h, l.vertex || 5);
+        ctx.clip();
+        ctx.drawImage(gradC, 0, 0);
+        ctx.restore();
+        return c;
+      }
+
+      return c;
+    }
+
+    // --- メインレンダリングエンジン ---
+    function render(isExport = false) {
+      const canvas = isExport ? $('expC') : $('mainCanvas');
+
+      const outW = isExport ? baseW : baseW + STAGE_PAD * 2;
+      const outH = isExport ? baseH : baseH + STAGE_PAD * 2;
+
+      canvas.width = outW; canvas.height = outH;
+      const ctx = canvas.getContext('2d');
+      ctx.clearRect(0, 0, outW, outH);
+
+      if (!isExport) {
+        ctx.fillStyle = '#181818';
+        ctx.fillRect(0, 0, outW, outH);
+
+        ctx.save();
+        ctx.translate(STAGE_PAD, STAGE_PAD);
+        ctx.fillStyle = (saveMode === 'comp') ? '#ffffff' : 'transparent';
+        ctx.shadowColor = 'rgba(0,0,0,0.6)';
+        ctx.shadowBlur = 24;
+        ctx.fillRect(0, 0, baseW, baseH);
+        ctx.restore();
+      } else {
+        if (saveMode === 'comp') {
+          ctx.fillStyle = '#ffffff';
+          ctx.fillRect(0, 0, baseW, baseH);
+        }
+      }
+
+      cachedSampleCanvas.width = baseW;
+      cachedSampleCanvas.height = baseH;
+      const sampleCtx = cachedSampleCanvas.getContext('2d');
+      sampleCtx.clearRect(0, 0, baseW, baseH);
+      layers.forEach(l => {
+        if (l.visible && l.type === 'image') {
+          const imgC = imageStore.get(l.imgStoreId);
+          if (imgC) sampleCtx.drawImage(imgC, l.x, l.y, l.w, l.h);
+        }
+      });
+
+      const accumCanvas = document.createElement('canvas');
+      accumCanvas.width = baseW; accumCanvas.height = baseH;
+      const accumCtx = accumCanvas.getContext('2d');
+      let prevLayerCanvas = null;
+
+      if (saveMode === 'dot') {
+        const toneMaskCanvas = document.createElement('canvas');
+        toneMaskCanvas.width = baseW; toneMaskCanvas.height = baseH;
+        const tmCtx = toneMaskCanvas.getContext('2d');
+
+        layers.forEach(l => {
+          if (l.visible && l.type === 'tone') {
+            const lc = renderSingleLayer(l, baseW, baseH, cachedSampleCanvas, prevLayerCanvas);
+            tmCtx.drawImage(lc, 0, 0);
+          }
+        });
+
+        let toneFilteredCanvas = document.createElement('canvas');
+        toneFilteredCanvas.width = baseW; toneFilteredCanvas.height = baseH;
+        const tfCtx = toneFilteredCanvas.getContext('2d');
+        tfCtx.drawImage(toneMaskCanvas, 0, 0);
+
+        layers.forEach(l => {
+          if (!l.visible) return;
+          if (l.type === 'gradmap') {
+            const mapped = applyGradientMap(toneFilteredCanvas, l.nodes || gradSets[0].nodes);
+            tfCtx.save();
+            tfCtx.globalAlpha = (l.opacity / 100);
+            tfCtx.globalCompositeOperation = l.blend || 'source-over';
+            tfCtx.drawImage(mapped, 0, 0);
+            tfCtx.restore();
+          }
+        });
+
+        tfCtx.globalCompositeOperation = 'destination-in';
+        tfCtx.drawImage(toneMaskCanvas, 0, 0);
+
+        accumCtx.drawImage(toneFilteredCanvas, 0, 0);
+      } else {
+        for (let i = 0; i < layers.length; i++) {
+          const l = layers[i];
+          if (!l.visible) continue;
+
+          const lc = renderSingleLayer(l, baseW, baseH, cachedSampleCanvas, prevLayerCanvas);
+
+          if (l.clip && prevLayerCanvas && l.type !== 'gradmap') {
+            const clipCtx = lc.getContext('2d');
+            clipCtx.globalCompositeOperation = 'destination-in';
+            clipCtx.drawImage(prevLayerCanvas, 0, 0);
+          }
+
+          accumCtx.save();
+          accumCtx.globalAlpha = (l.opacity / 100);
+          accumCtx.globalCompositeOperation = l.blend || 'source-over';
+          accumCtx.drawImage(lc, 0, 0);
+          accumCtx.restore();
+
+          prevLayerCanvas = lc;
+        }
+
+        const gr = parseInt($('grain').value);
+        if (gr > 0) {
+          accumCtx.save();
+          accumCtx.globalAlpha = (gr/100)*0.7;
+          accumCtx.globalCompositeOperation = 'multiply';
+          accumCtx.fillStyle = accumCtx.createPattern($('noiseC'), 'repeat');
+          accumCtx.fillRect(0, 0, baseW, baseH);
+          accumCtx.restore();
+        }
+      }
+
+      ctx.save();
+      if (!isExport) ctx.translate(STAGE_PAD, STAGE_PAD);
+      ctx.drawImage(accumCanvas, 0, 0);
+      ctx.restore();
+
+      if (!isExport) {
+        ctx.save();
+        ctx.translate(STAGE_PAD, STAGE_PAD);
+
+        ctx.save();
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.45)';
+        ctx.beginPath();
+        ctx.rect(-STAGE_PAD, -STAGE_PAD, outW, outH);
+        ctx.rect(0, 0, baseW, baseH);
+        ctx.fill('evenodd');
+        ctx.restore();
+
+        ctx.strokeStyle = '#6D8196';
+        ctx.lineWidth = 1.5 / zoom;
+        ctx.strokeRect(0, 0, baseW, baseH);
+
+        if (snapLineX !== null) {
+          ctx.strokeStyle = '#ec4899'; ctx.lineWidth = 1.5 / zoom; ctx.setLineDash([]);
+          ctx.beginPath(); ctx.moveTo(snapLineX, -STAGE_PAD); ctx.lineTo(snapLineX, baseH + STAGE_PAD); ctx.stroke();
+        }
+        if (snapLineY !== null) {
+          ctx.strokeStyle = '#ec4899'; ctx.lineWidth = 1.5 / zoom; ctx.setLineDash([]);
+          ctx.beginPath(); ctx.moveTo(-STAGE_PAD, snapLineY); ctx.lineTo(baseW + STAGE_PAD, snapLineY); ctx.stroke();
+        }
+
+        const cur = getActiveLayer();
+        if (cur) {
+          ctx.strokeStyle = cur.locked ? '#888888' : '#6D8196';
+          ctx.lineWidth = 1.8 / zoom;
+          ctx.setLineDash(cur.locked ? [] : [5 / zoom, 4 / zoom]);
+
+          buildFramePath(ctx, cur.frameShape || 'rect', cur.x, cur.y, cur.w, cur.h, cur.vertex || 5);
+          ctx.stroke();
+
+          if (!cur.locked) {
+            ctx.setLineDash([]);
+            ctx.fillStyle = '#ffffff';
+            ctx.strokeStyle = '#333333';
+            ctx.lineWidth = 1.5 / zoom;
+            const hRadius = 5 / zoom;
+            const handles = [
+              { x: cur.x, y: cur.y },
+              { x: cur.x + cur.w, y: cur.y },
+              { x: cur.x + cur.w, y: cur.y + cur.h },
+              { x: cur.x, y: cur.y + cur.h }
+            ];
+            handles.forEach(h => {
+              ctx.fillRect(h.x - hRadius, h.y - hRadius, hRadius * 2, hRadius * 2);
+              ctx.strokeRect(h.x - hRadius, h.y - hRadius, hRadius * 2, hRadius * 2);
+            });
+          }
+        }
+        ctx.restore();
+      }
+    }
+
+    // --- PNG書き出し ---
+    $('bExport').onclick = () => {
+      render(true);
+      $('mImg').src = $('expC').toDataURL('image/png');
+      $('modal').style.display = 'flex';
+      render(false);
+    };
+    $('bCloseM').onclick = () => { $('modal').style.display = 'none'; };
+    $('modal').onclick = e => { if (e.target === $('modal')) $('modal').style.display = 'none'; };
+
+    // 初期化
+    window.onload = () => {
+      renderLayerStack();
+      syncActiveProps();
+      pushState();
+      render();
+      fitToScreen();
+    };
+    window.onresize = () => {
+      updateNavigatorUI();
+    };
+  </script>
+</body>
+</html>
